@@ -198,6 +198,7 @@
 
     <div class="toolbar">
       <button class="tbtn primary" data-add>＋ 新增課程</button>
+      <button class="tbtn" data-share>📤 分享到其他裝置</button>
       <button class="tbtn" data-export>⬇ 匯出備份</button>
       <button class="tbtn" data-import>⬆ 匯入</button>
       <button class="tbtn" data-reset>↺ 還原預設</button>
@@ -603,6 +604,23 @@ function saveCourse(){
 function deleteCourseDirect(i){ const cid=courses[i].cid; courses.splice(i,1); Object.keys(marks).forEach(k=>{if(k.startsWith(cid+"__"))delete marks[k];}); saveData(); closeModal(); renderAll(); toast("已刪除課程"); }
 
 function exportData(){ copyText(JSON.stringify({courses,marks},null,2)).then(()=>toast("✅ 設定已複製，貼到記事本即可備份")); }
+
+/* ---- 把整份課表塞進連結，分享到其他裝置 ---- */
+let pendingShared=null;
+function b64uEncode(s){ return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function b64uDecode(b){ b=b.replace(/-/g,"+").replace(/_/g,"/"); while(b.length%4)b+="="; return decodeURIComponent(escape(atob(b))); }
+function buildShareUrl(){ return location.origin+location.pathname+"#d="+b64uEncode(JSON.stringify({courses,marks})); }
+function shareData(){
+  const url=buildShareUrl(), big=url.length>14000;
+  if(navigator.share){ navigator.share({title:"Alyssa & Evelyn 的每日課表", text:"課表（點開直接看編好的內容）", url}).catch(()=>{ copyText(url).then(()=>toast("✅ 已複製分享連結，貼到 LINE／訊息傳給其他裝置")); }); }
+  else { copyText(url).then(()=>toast(big?"✅ 已複製連結（內容偏多，建議用 AirDrop／雲端傳）":"✅ 已複製分享連結，貼到 LINE／訊息傳給其他裝置")); }
+}
+function readSharedFromHash(){ const m=(location.hash||"").match(/[#&]d=([^&]+)/); if(!m) return null; try{ const data=JSON.parse(b64uDecode(decodeURIComponent(m[1]))); return (data&&data.courses)?data:null; }catch(e){ return null; } }
+function clearHash(){ try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){ location.hash=""; } }
+function promptShared(data){
+  openModal(`<h2>收到分享的課表</h2><p class="field hint">這是別台裝置分享過來的課表（${(data.courses||[]).length} 堂課）。載入會<b>覆蓋這台目前的內容</b>；如果這台原本也有資料，建議先按「不要載入」並到原本頁面「匯出備份」。</p>
+    <div class="modal-acts"><button class="btn btn-cancel" data-sharedcancel>不要載入</button><button class="btn btn-save" data-sharedload>載入這份</button></div>`);
+}
 function openImport(){ openModal(`<h2>匯入設定</h2><div class="field"><label>貼上備份的 JSON</label><textarea id="impText" rows="8" placeholder='{"teachers":[...],"courses":[...]}'></textarea></div><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-doimport>匯入</button></div>`); }
 function doImport(){ try{ const d=JSON.parse(modal.querySelector("#impText").value); if(!d.courses)throw 0; migrateTeachers(d); courses=d.courses; marks=d.marks||{}; ensureCids(); saveData(); closeModal(); renderAll(); toast("✅ 已匯入"); }catch(e){ toast("格式不對，請貼完整的 JSON"); } }
 function resetData(){ openModal(`<h2>還原成預設？</h2><p class="field hint">會清掉目前的修改（含請假標記），回到範例課表。建議先「匯出備份」。</p><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" data-doreset>還原</button></div>`); }
@@ -619,7 +637,7 @@ document.addEventListener("click",e=>{
     openCourseModal(null,{recur:"weekly",day:body.dataset.day,start:fmtHM(mins),end:fmtHM(mins+60)});
     return;
   }
-  const el=e.target.closest("[data-detail],[data-edit],[data-leave],[data-add],[data-addday],[data-dayopen],[data-addonce],[data-export],[data-import],[data-reset],[data-savecourse],[data-deldirect],[data-close],[data-doimport],[data-doreset],[data-viewweek],[data-viewmonth],[data-navprev],[data-navnext],[data-navtoday],[data-togglemark],[data-savenote]");
+  const el=e.target.closest("[data-detail],[data-edit],[data-leave],[data-add],[data-addday],[data-dayopen],[data-addonce],[data-share],[data-sharedload],[data-sharedcancel],[data-export],[data-import],[data-reset],[data-savecourse],[data-deldirect],[data-close],[data-doimport],[data-doreset],[data-viewweek],[data-viewmonth],[data-navprev],[data-navnext],[data-navtoday],[data-togglemark],[data-savenote]");
   if(!el || el.tagName==="A") return;
   const d=el.dataset;
   if(d.detail!==undefined) openCourseDetail(+d.detail, d.date||ymd(now));
@@ -630,6 +648,9 @@ document.addEventListener("click",e=>{
   else if(d.dayopen!==undefined) openDayModal(d.dayopen);
   else if(d.addonce!==undefined) openCourseModal(null,{recur:"once",date:d.addonce});
   else if(d.export!==undefined) exportData();
+  else if(d.share!==undefined) shareData();
+  else if(d.sharedload!==undefined){ if(pendingShared){ courses=pendingShared.courses; marks=pendingShared.marks||{}; ensureCids(); saveData(); } pendingShared=null; clearHash(); closeModal(); renderAll(); toast("✅ 已載入分享的課表"); }
+  else if(d.sharedcancel!==undefined){ pendingShared=null; clearHash(); closeModal(); toast("已保留這台原本的課表"); }
   else if(d.import!==undefined) openImport();
   else if(d.reset!==undefined) resetData();
   else if(d.savecourse!==undefined) saveCourse();
@@ -649,7 +670,10 @@ mqMobile.addEventListener("change",renderCalendar);
 
 /* init */
 document.getElementById("todayLine").textContent=`📅 今天 ${now.getMonth()+1}/${now.getDate()} ${["週日","週一","週二","週三","週四","週五","週六"][now.getDay()]}`;
-initData(); renderAll();
+initData();
+renderAll();
+const _shared=readSharedFromHash();
+if(_shared){ pendingShared=_shared; promptShared(_shared); }
 </script>
 </body>
 </html>
