@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Alyssa & 妹妹的暑假課表</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#FBF8F2;
+    --card:#FFFFFF;
+    --ink:#2B2A33;
+    --muted:#6E6D78;
+    --hair:#ECE7DD;
+
+    --alyssa:#E2674A;      --alyssa-soft:#FBE8E1;
+    --sister:#2A9D8F;      --sister-soft:#DEF0ED;
+    --sun:#E0962E;         --sun-soft:#FAEDD5;
+    --family:#4F9A66;      --family-soft:#E4F1E8;
+    --pause:#8A8A93;       --pause-soft:#EDEDEF;
+    --line:#06C755;
+
+    --radius:18px;
+    --shadow:0 8px 24px rgba(60,40,20,0.08);
+  }
+
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    font-family:"Noto Sans TC",-apple-system,BlinkMacSystemFont,"Microsoft JhengHei",sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.65;
+  }
+
+  .wrap{max-width:960px;margin:0 auto;padding:0 16px 64px;}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    background:linear-gradient(135deg,var(--alyssa) 0%,var(--sun) 100%);
+    color:#fff;
+    padding:34px 20px 30px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+  }
+  .hero::after{
+    content:"";position:absolute;right:-40px;top:-40px;
+    width:180px;height:180px;border-radius:50%;
+    background:rgba(255,255,255,0.14);
+  }
+  .hero .eyebrow{
+    font-family:"Baloo 2",sans-serif;font-weight:800;
+    letter-spacing:4px;font-size:13px;opacity:.9;margin:0;
+  }
+  .hero h1{
+    margin:6px 0 4px;font-size:clamp(24px,5vw,32px);font-weight:900;
+    position:relative;z-index:1;
+  }
+  .hero .today-line{
+    margin:10px auto 0;display:inline-flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,0.2);padding:6px 14px;border-radius:999px;
+    font-size:14px;font-weight:500;position:relative;z-index:1;
+  }
+
+  /* ---------- Section ---------- */
+  .section-head{
+    display:flex;align-items:baseline;gap:10px;
+    margin:34px 0 14px;
+  }
+  .section-head h2{font-size:20px;margin:0;font-weight:900;}
+  .section-head .count{font-size:13px;color:var(--muted);font-weight:500;}
+
+  /* ---------- Cards grid ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:14px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--hair);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:16px 16px 14px;
+    position:relative;
+    border-left:5px solid var(--pause);
+  }
+  .card.alyssa{border-left-color:var(--alyssa);}
+  .card.sister{border-left-color:var(--sister);}
+
+  .card .who{
+    font-family:"Baloo 2",sans-serif;font-weight:800;font-size:12px;
+    letter-spacing:.5px;text-transform:uppercase;
+  }
+  .card.alyssa .who{color:var(--alyssa);}
+  .card.sister .who{color:var(--sister);}
+
+  .card h3{margin:2px 0 8px;font-size:17px;font-weight:700;}
+
+  .meta{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:12px;}
+  .meta b{color:var(--ink);font-weight:500;}
+
+  /* ---------- Chips ---------- */
+  .chip{
+    display:inline-block;padding:3px 10px;border-radius:999px;
+    font-size:12px;font-weight:700;margin-bottom:8px;
+  }
+  .chip--fixed{background:var(--ink);color:#fff;}
+  .chip--flex{background:var(--sun-soft);color:#9A6611;}
+  .chip--pause{background:var(--pause-soft);color:var(--pause);}
+  .chip--family{background:var(--family-soft);color:#2F6B43;}
+
+  /* ---------- Buttons ---------- */
+  .btns{display:flex;flex-wrap:wrap;gap:8px;}
+  .btn{
+    border:none;border-radius:11px;padding:9px 13px;
+    font-size:14px;font-weight:700;cursor:pointer;
+    text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+    font-family:inherit;transition:transform .08s ease,filter .15s ease;
+  }
+  .btn:active{transform:scale(.96);}
+  .btn:focus-visible{outline:3px solid var(--sun);outline-offset:2px;}
+  .btn-leave{background:var(--alyssa);color:#fff;}
+  .card.sister .btn-leave{background:var(--sister);}
+  .btn-line{background:var(--line);color:#fff;}
+  .btn-line.ghost{background:#fff;color:#0a8f44;border:1.5px solid var(--line);}
+  .btn[aria-disabled="true"]{background:var(--pause-soft);color:var(--muted);cursor:default;pointer-events:none;}
+
+  /* ---------- Week overview ---------- */
+  .week{
+    background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);
+    box-shadow:var(--shadow);overflow:hidden;
+  }
+  .week-row{
+    display:grid;grid-template-columns:64px 1fr;gap:12px;
+    padding:12px 14px;border-bottom:1px solid var(--hair);align-items:center;
+  }
+  .week-row:last-child{border-bottom:none;}
+  .week-row.is-today{background:var(--sun-soft);}
+  .day-label{font-weight:900;font-size:15px;}
+  .day-label small{display:block;font-weight:500;font-size:11px;color:var(--muted);}
+  .pills{display:flex;flex-wrap:wrap;gap:6px;}
+  .pill{
+    font-size:12.5px;font-weight:500;padding:4px 10px;border-radius:999px;
+    border:1px solid transparent;
+  }
+  .pill.alyssa{background:var(--alyssa-soft);color:#A33C25;border-color:#F2C9BC;}
+  .pill.sister{background:var(--sister-soft);color:#1C6B61;border-color:#B9DDD8;}
+  .pill .t{font-variant-numeric:tabular-nums;font-weight:700;font-size:11.5px;margin-right:6px;opacity:.85;}
+  .empty-day{color:var(--muted);font-size:13px;}
+
+  /* ---------- Today empty ---------- */
+  .restday{
+    background:var(--card);border:1px dashed var(--hair);border-radius:var(--radius);
+    padding:26px;text-align:center;color:var(--muted);font-size:15px;
+  }
+
+  /* ---------- Legend ---------- */
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 0;}
+
+  /* ---------- How-to ---------- */
+  details.howto{
+    margin-top:34px;background:var(--card);border:1px solid var(--hair);
+    border-radius:var(--radius);box-shadow:var(--shadow);padding:4px 18px;
+  }
+  details.howto summary{cursor:pointer;font-weight:700;padding:12px 0;list-style:none;}
+  details.howto summary::-webkit-details-marker{display:none;}
+  details.howto summary::before{content:"▸ ";color:var(--sun);}
+  details.howto[open] summary::before{content:"▾ ";}
+  details.howto .body{font-size:14px;color:var(--muted);padding-bottom:14px;line-height:1.8;}
+  details.howto code{background:var(--pause-soft);padding:1px 6px;border-radius:6px;font-size:13px;color:var(--ink);}
+
+  .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px;}
+
+  /* ---------- Toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;
+    font-size:14px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.25);
+    opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:99;
+    max-width:90vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media (max-width:520px){
+    .week-row{grid-template-columns:54px 1fr;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .btn,.toast{transition:none;}
+  }
+</style>
+</head>
+
+<body>
+  <header class="hero">
+    <p class="eyebrow">SUMMER 2026</p>
+    <h1>Alyssa &amp; 妹妹的暑假課表</h1>
+    <div class="today-line" id="todayLine">載入中…</div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- 今天 -->
+    <div class="section-head">
+      <h2>☀️ 今天的課</h2>
+      <span class="count" id="todayCount"></span>
+    </div>
+    <div id="todaySection"></div>
+
+    <!-- 本週總覽 -->
+    <div class="section-head"><h2>🗓️ 本週總覽</h2></div>
+    <div class="week" id="weekTable"></div>
+    <div class="legend">
+      <span class="chip chip--fixed">固定課</span>
+      <span class="chip chip--flex">彈性</span>
+      <span class="chip chip--family">家庭任務</span>
+      <span class="chip chip--pause">暫緩</span>
+    </div>
+
+    <!-- Alyssa -->
+    <div class="section-head">
+      <h2>Alyssa 的課程</h2>
+      <span class="count" id="alyssaCount"></span>
+    </div>
+    <div class="grid" id="alyssaCards"></div>
+
+    <!-- 妹妹 -->
+    <div class="section-head">
+      <h2>妹妹的課程</h2>
+      <span class="count" id="sisterCount"></span>
+    </div>
+    <div class="grid" id="sisterCards"></div>
+
+    <!-- 老師聯絡 -->
+    <div class="section-head"><h2>📇 老師聯絡中心</h2></div>
+    <div class="grid" id="teacherCards"></div>
+
+    <!-- 使用說明 -->
+    <details class="howto">
+      <summary>✏️ 怎麼修改這個課表？</summary>
+      <div class="body">
+        全部資料都在這個檔案最下方的 <code>&lt;script&gt;</code> 裡，分成兩塊，改完存檔 push 到 GitHub 就會更新：<br><br>
+        <b>1. 老師（teachers）</b>：填上每位老師的 <code>line</code>。<br>
+        ・個人好友：到 LINE「加好友 → 我的 QR code / 邀請」拿到 <code>https://line.me/ti/p/xxxx</code> 貼上。<br>
+        ・官方帳號：用 <code>https://line.me/R/oaMessage/@帳號ID/?</code> 還能直接帶入文字（最接近自動送出）。<br>
+        ・先不填就留 <code>"#"</code>，請假會改用 LINE 分享選單。<br><br>
+        <b>2. 課程（courses）</b>：固定鐘點的填 <code>start</code>／<code>end</code>（24 小時制，如 <code>"09:30"</code>、<code>"14:00"</code>），課表會自動照時間排序；沒固定時間的用 <code>timeNote</code> 寫說明（如「晚餐後 20 分鐘」）。再改 <code>day</code>（週一～週日 / 週末）、<code>status</code>（fixed 固定／flex 彈性／family 家庭／pause 暫緩）。標 <code>pause</code> 的不會出現在今天與週總覽。<br><br>
+        <b>請假鈕</b>：按下後會自動把請假訊息複製好、並打開那位老師的 LINE，你貼上送出就完成。
+      </div>
+    </details>
+
+    <p class="foot">為 Alyssa 和妹妹做的暑假課表 · 放在 GitHub Pages 上，手機開最方便 🌴</p>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   設定區：改這裡就好
+   ============================================================ */
+
+// 1) 老師：line 填好友連結 / 官方帳號連結；先空就留 "#"
+const teachers = {
+  reading:  { name:"陪讀老師",   line:"#", note:"看獵豹之前的 video，帶 Alyssa 做 mindmap 筆記" },
+  music:    { name:"音樂老師",   line:"#", note:"小提琴或大提琴，先決定再開課" },
+  swimming: { name:"游泳教練",   line:"#", note:"練轉身、跳水、蝶腳" },
+  coding:   { name:"程式老師",   line:"#", note:"線上課，暑假先從這個開始" },
+  aops:     { name:"AoPS 老師",  line:"#", note:"先暫緩，等程式語言上軌道再說" },
+  science:  { name:"Science 老師",line:"#", note:"先暫緩，避免課排太滿" },
+  skating:  { name:"極光滑冰",   line:"#", note:"有空再去，純欣賞放鬆" },
+  dad:      { name:"爸爸",       line:"#", note:"晚餐後陪 Alyssa 練籃球運球" },
+};
+
+// 2) 課程：day=週一~週日 或 週末／未排；status=fixed/flex/family/pause
+// 時間填法：
+//   有固定鐘點 → 填 start / end，24 小時制 "HH:MM"（例如 "09:30"、"14:00"）
+//   彈性、沒固定鐘點 → 用 timeNote 寫說明（例如 "晚餐後 20 分鐘"）
+//   暫緩(pause) → 時間留空不用填
+// ⚠️ 下面有 start/end 的時間都是「範例」，請改成跟老師敲定的實際時間。
+const courses = [
+  // ---- Alyssa ----
+  { child:"Alyssa", title:"獵豹 video + mindmap 筆記", day:"週一", start:"10:00", end:"11:00", teacher:"reading",  status:"fixed",  goal:"看完影片用 mindmap 整理重點" },
+  { child:"Alyssa", title:"程式語言（線上）",          day:"週二", start:"19:30", end:"20:30", teacher:"coding",   status:"fixed",  goal:"暑假線上課先試這一門，不要一次加太多" },
+  { child:"Alyssa", title:"游泳：轉身／跳水／蝶腳",     day:"週三", start:"15:00", end:"16:00", teacher:"swimming", status:"fixed",  goal:"針對轉身、跳水、蝶腳做技術訓練" },
+  { child:"Alyssa", title:"小提琴 or 大提琴",          day:"週四", timeNote:"樂器確定後再排", teacher:"music",   status:"flex",   goal:"先決定學哪一種，再安排老師" },
+  { child:"Alyssa", title:"跟爸爸學籃球運球",          day:"週五", timeNote:"晚餐後 20 分鐘", teacher:"dad",     status:"family", goal:"低壓力陪伴，建立球感" },
+  { child:"Alyssa", title:"極光看滑冰",                day:"週末", timeNote:"有空再去",       teacher:"skating", status:"flex",   goal:"彈性活動，不排成壓力" },
+  { child:"Alyssa", title:"AoPS（線上）",             day:"未排", teacher:"aops",     status:"pause",  goal:"等程式語言穩定後再考慮" },
+  { child:"Alyssa", title:"Science（線上）",          day:"未排", teacher:"science",  status:"pause",  goal:"先不加，避免暑假太滿" },
+
+  // ---- 妹妹（先放範例，之後再補）----
+  { child:"妹妹", title:"音樂啟蒙",   day:"週二", timeNote:"時間未定", teacher:"music",    status:"flex", goal:"以興趣為主，輕鬆玩音樂" },
+  { child:"妹妹", title:"游泳基礎",   day:"週四", timeNote:"時間未定", teacher:"swimming", status:"flex", goal:"熟悉水性，建立安全感" },
+];
+
+/* ============================================================
+   以下不用改
+   ============================================================ */
+
+const DAY_ISO = { "週一":1,"週二":2,"週三":3,"週四":4,"週五":5,"週六":6,"週日":7 };
+const STATUS = {
+  fixed:  {label:"固定課",   cls:"chip--fixed"},
+  flex:   {label:"彈性",     cls:"chip--flex"},
+  family: {label:"家庭任務", cls:"chip--family"},
+  pause:  {label:"暫緩",     cls:"chip--pause"},
+};
+const childClass = c => c.child === "Alyssa" ? "alyssa" : "sister";
+
+// 時間顯示與排序
+const toMin = t => { const [h,m]=t.split(":").map(Number); return h*60+m; };
+function displayTime(c){
+  if(c.start) return c.end ? `${c.start}–${c.end}` : c.start;
+  if(c.timeNote) return c.timeNote;
+  return "時間未定";
+}
+// 有鐘點的照時間排，沒鐘點的排在後面
+const sortKey = c => c.start ? toMin(c.start) : 99999;
+
+// 今天是星期幾（1=週一 … 7=週日）
+const now = new Date();
+const isoToday = now.getDay() === 0 ? 7 : now.getDay();
+
+courses.forEach((c,i)=>{
+  c.id = i;
+  c.dayIso = DAY_ISO[c.day] || null;
+  c.weekend = (c.day === "週末");
+});
+
+const isToday = c =>
+  c.status !== "pause" &&
+  ( c.dayIso === isoToday || (c.weekend && (isoToday===6 || isoToday===7)) );
+
+// 取得本週某一天的日期（M/D）
+function dateLabel(iso){
+  if(!iso) return "";
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (isoToday - 1));
+  const d = new Date(monday);
+  d.setDate(monday.getDate() + (iso - 1));
+  return (d.getMonth()+1) + "/" + d.getDate();
+}
+
+/* ---------- 請假：複製訊息 + 開老師 LINE ---------- */
+function doLeave(id){
+  const c = courses[id];
+  const t = teachers[c.teacher];
+  const dStr = c.dayIso ? `${dateLabel(c.dayIso)}（${c.day}）` : `${c.day} `;
+  const timeStr = c.start ? `${c.start}–${c.end} ` : "";
+  const msg =
+`${t.name}您好，我是 ${c.child} 的家長。
+${c.child} ${dStr}${timeStr}的「${c.title}」想請假一次，
+不好意思，麻煩老師了，謝謝！🙏`;
+
+  copyText(msg).then(()=>{
+    if(t.line && t.line !== "#"){
+      toast("✅ 請假訊息已複製，幫你開老師 LINE，貼上送出即可");
+      window.open(t.line, "_blank");
+    } else {
+      toast("✅ 訊息已複製，開啟 LINE 選老師後貼上送出");
+      window.open("https://line.me/R/share?text=" + encodeURIComponent(msg), "_blank");
+    }
+  });
+}
+
+function copyText(text){
+  if(navigator.clipboard && window.isSecureContext){
+    return navigator.clipboard.writeText(text).catch(()=>fallbackCopy(text));
+  }
+  return fallbackCopy(text);
+}
+function fallbackCopy(text){
+  return new Promise(res=>{
+    const ta=document.createElement("textarea");
+    ta.value=text;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand("copy");}catch(e){}
+    document.body.removeChild(ta);res();
+  });
+}
+
+let toastTimer;
+function toast(text){
+  const el=document.getElementById("toast");
+  el.textContent=text;el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove("show"),3200);
+}
+
+/* ---------- 卡片 ---------- */
+function courseCard(c){
+  const t = teachers[c.teacher];
+  const s = STATUS[c.status];
+  const leaveBtn = c.status === "pause"
+    ? `<button class="btn btn-leave" aria-disabled="true">暫緩中</button>`
+    : `<button class="btn btn-leave" data-leave data-cid="${c.id}">請假</button>`;
+  const lineBtn = (t.line && t.line!=="#")
+    ? `<a class="btn btn-line ghost" href="${t.line}" target="_blank" rel="noopener">LINE 討論</a>`
+    : `<a class="btn btn-line ghost" aria-disabled="true">未設定 LINE</a>`;
+  return `
+    <div class="card ${childClass(c)}">
+      <div class="who">${c.child}</div>
+      <span class="chip ${s.cls}">${s.label}</span>
+      <h3>${c.title}</h3>
+      <div class="meta">
+        <b>${c.day}</b> · ${displayTime(c)}<br>
+        老師：${t.name}<br>
+        目標：${c.goal}
+      </div>
+      <div class="btns">${leaveBtn}${lineBtn}</div>
+    </div>`;
+}
+
+/* ---------- 今天 ---------- */
+function renderToday(){
+  const list = courses.filter(isToday).sort((a,b)=>sortKey(a)-sortKey(b));
+  document.getElementById("todayCount").textContent =
+    list.length ? `${list.length} 堂` : "";
+  const box = document.getElementById("todaySection");
+  if(!list.length){
+    box.innerHTML = `<div class="restday">今天沒有排課，放鬆一下 🌴</div>`;
+    return;
+  }
+  box.className = "grid";
+  box.innerHTML = list.map(courseCard).join("");
+}
+
+/* ---------- 本週總覽 ---------- */
+function renderWeek(){
+  const rows = [
+    {label:"週一",iso:1}, {label:"週二",iso:2}, {label:"週三",iso:3},
+    {label:"週四",iso:4}, {label:"週五",iso:5},
+    {label:"週六・日",iso:6,weekend:true},
+  ];
+  const html = rows.map(r=>{
+    const todayHit = r.weekend ? (isoToday===6||isoToday===7) : (r.iso===isoToday);
+    const items = courses.filter(c=>{
+      if(c.status==="pause") return false;
+      if(r.weekend) return c.dayIso===6 || c.dayIso===7 || c.weekend;
+      return c.dayIso===r.iso;
+    }).sort((a,b)=>sortKey(a)-sortKey(b));
+    const pills = items.length
+      ? items.map(c=>`<span class="pill ${childClass(c)}"><span class="t">${displayTime(c)}</span>${c.title}</span>`).join("")
+      : `<span class="empty-day">—</span>`;
+    return `
+      <div class="week-row ${todayHit?'is-today':''}">
+        <div class="day-label">${r.label}${todayHit?'<small>今天</small>':''}</div>
+        <div class="pills">${pills}</div>
+      </div>`;
+  }).join("");
+  document.getElementById("weekTable").innerHTML = html;
+}
+
+/* ---------- 老師 ---------- */
+function renderTeachers(){
+  document.getElementById("teacherCards").innerHTML =
+    Object.values(teachers).map(t=>{
+      const btn = (t.line && t.line!=="#")
+        ? `<a class="btn btn-line" href="${t.line}" target="_blank" rel="noopener">打開 LINE</a>`
+        : `<a class="btn btn-line ghost" aria-disabled="true">尚未設定 LINE</a>`;
+      return `
+        <div class="card">
+          <h3>${t.name}</h3>
+          <div class="meta">${t.note}</div>
+          <div class="btns">${btn}</div>
+        </div>`;
+    }).join("");
+}
+
+/* ---------- 初始化 ---------- */
+function fmtTodayLine(){
+  const names=["週日","週一","週二","週三","週四","週五","週六"];
+  return `📅 今天 ${now.getMonth()+1}/${now.getDate()} ${names[now.getDay()]}`;
+}
+
+document.getElementById("todayLine").textContent = fmtTodayLine();
+
+const alyssa = courses.filter(c=>c.child==="Alyssa");
+const sister = courses.filter(c=>c.child==="妹妹");
+document.getElementById("alyssaCount").textContent = `${alyssa.length} 門`;
+document.getElementById("sisterCount").textContent = `${sister.length} 門`;
+document.getElementById("alyssaCards").innerHTML = alyssa.map(courseCard).join("");
+document.getElementById("sisterCards").innerHTML = sister.map(courseCard).join("");
+
+renderToday();
+renderWeek();
+renderTeachers();
+
+// 請假鈕（事件委派，避免內嵌字串跳脫問題）
+document.addEventListener("click", e=>{
+  const b = e.target.closest("[data-leave]");
+  if(b) doLeave(Number(b.dataset.cid));
+});
+</script>
+</body>
+</html>
