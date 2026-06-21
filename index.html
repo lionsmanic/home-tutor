@@ -217,9 +217,11 @@
     <details class="howto">
       <summary>✏️ 使用說明（請假怎麼運作、標記、臨時加課、LINE）</summary>
       <div class="body">
-        <b>請假（不用先設定 LINE 連結）</b>：點課程 → 按「用 LINE 請假」，LINE 會直接打開、請假訊息（含日期時間）已經幫你帶好，你只要在 LINE 裡<b>點那位老師 → 送出</b>。一按請假，那堂課就會在課表上標「請假」並畫線，之後就看得出來請過了；按錯可在詳情裡「取消標記」。<br>
-        ・<b>關於連動自己的 LINE</b>：純網頁（GitHub Pages）基於隱私無法登入你的 LINE 帳號或讀好友清單，所以改用上面這個「LINE 分享」方式——由 LINE 自己列出你的好友讓你選，等於不用設定就能用。<br>
-        ・若老師有 Email，填了之後可用「Email 請假」，會直接開好信件、主旨內文都填好，按寄出即可（這個最自動）。<br><br>
+        <b>請假（不用先設定 LINE 連結）</b>：點課程 → 按「用 LINE 請假」。一按請假，那堂課就會在課表上標「請假」並畫線，按錯可在詳情「取消標記」。送出方式依裝置不同：<br>
+        ・<b>手機</b>：會打開 LINE 並讓你選老師，訊息(含日期時間)已帶好，點老師→送出。<br>
+        ・<b>電腦</b>：會把訊息<b>複製</b>好，請貼到 LINE 電腦版老師的對話送出（電腦瀏覽器無法自動跳進 LINE，這是 LINE 的限制）。<br>
+        ・想<b>一鍵直接開某位老師的對話</b>：到「管理老師」填那位老師的 LINE 連結，之後按請假就會直接開他的對話，訊息已複製、貼上即可。（LINE 不允許把文字自動塞進別人對話，所以一定要貼一下。）<br>
+        ・老師若有 Email，填了可用「Email 請假」，直接開好信、主旨內文都填好，按寄出最省事。<br><br>
         <b>註記</b>：詳情視窗可幫每堂課寫一句註記（如「改線上」），課表上會出現 📝。<br><br>
         <b>臨時加課</b>：按「＋ 新增課程」或在月曆點某天「＋ 新增單次課程」，最上面可「沿用已建立的課程」一鍵帶入名稱/老師/時間，再自由選「每週固定」或「單次／指定日期」。<br><br>
         <b>選填的老師 LINE 連結</b>：只用在「打開 LINE 討論」想直接開對話時。拿法：請老師到自己的 LINE → 主頁 → 設定 → 個人檔案 → 分享，把連結傳給你；或填他的 LINE ID。沒填也不影響請假。<br><br>
@@ -265,6 +267,7 @@ const DAYS=["週一","週二","週三","週四","週五","週六","週日"];
 const WEEK_CH=["","週一","週二","週三","週四","週五","週六","週日"];
 const DAY_ISO={"週一":1,"週二":2,"週三":3,"週四":4,"週五":5,"週六":6,"週日":7};
 const now=new Date();
+const isMobile=/iphone|ipad|ipod|android/i.test(navigator.userAgent);
 const pad=n=>String(n).padStart(2,"0");
 const toMin=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
 const fmtHM=min=>{min=Math.max(0,Math.min(min,23*60+45));return pad(Math.floor(min/60))+":"+pad(min%60);};
@@ -452,8 +455,26 @@ function leaveMsg(c,t,ds){
 function doLeave(i,ds,channel){
   const c=courses[i],t=teacherById(c.teacherId),msg=leaveMsg(c,t,ds);
   setLeave(c,ds,true);
-  if(channel==="email"&&t&&t.email){ window.open(mailUrl(t,`請假通知 - ${c.child} ${c.title}`,msg),"_blank"); toast("✅ 已標記請假並開啟 Email，內容已填好，按寄出即可"); }
-  else { window.open("https://line.me/R/share?text="+encodeURIComponent(msg),"_blank"); toast("✅ 已標記請假，在 LINE 點老師按送出即可"); }
+  if(channel==="email"&&t&&t.email){
+    window.open(mailUrl(t,`請假通知 - ${c.child} ${c.title}`,msg),"_blank");
+    toast("✅ 已標記請假並開啟 Email，內容已填好，按寄出即可");
+  } else {
+    // LINE：訊息一定先複製好（貼一下就送）
+    copyText(msg).then(()=>{
+      if(t&&t.line){
+        // 有存老師的 LINE 連結 → 直接開那位老師的對話，貼上即可
+        window.open(lineUrl(t),"_blank");
+        toast("✅ 已標記＋複製訊息，已開啟老師 LINE 對話，貼上(長按→貼上)送出");
+      } else if(isMobile){
+        // 手機沒存連結 → 用 LINE 分享，選老師、訊息已帶好
+        window.open("https://line.me/R/share?text="+encodeURIComponent(msg),"_blank");
+        toast("✅ 已標記請假，LINE 開啟後選老師按送出即可");
+      } else {
+        // 電腦沒存連結 → 不要跳到官網，直接複製請你貼到 LINE 電腦版
+        toast("✅ 已標記＋已複製請假訊息！請打開 LINE 電腦版，貼到老師的對話送出");
+      }
+    });
+  }
   renderAll();
   if(backdrop.classList.contains("show")) openCourseDetail(i,ds);
 }
@@ -479,7 +500,12 @@ function openCourseDetail(i,ds){
   detailI=i; detailDs=ds;
   const c=courses[i], t=teacherById(c.teacherId), m=getMark(c,ds)||{}, d=parseYmd(ds);
   const when=c.recur==="once"?`${d.getMonth()+1}/${d.getDate()}（${WEEK_CH[isoOf(d)]}）單次`:`每週 ${c.day||""} · 本次 ${d.getMonth()+1}/${d.getDate()}`;
-  const emailBtn=t&&t.email?`<button class="btn leave-big" style="background:var(--email)" data-leave="${i}" data-ds="${ds}" data-channel="email">✉️ 用 Email 請假</button>`:"";
+  const emailBtn=t&&t.email?`<button class="btn leave-big" style="background:var(--email)" data-leave="${i}" data-ds="${ds}" data-channel="email">✉️ 用 Email 請假（最自動）</button>`:"";
+  const lineHint = t&&t.line
+      ? `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">按下會開啟 ${teacherName(c)} 的 LINE 對話，訊息已複製，貼上送出即可。</p>`
+      : (isMobile
+          ? `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">按下會開 LINE 讓你選老師，訊息已帶好。</p>`
+          : `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">電腦版：按下會複製訊息，請貼到 LINE 電腦版老師的對話。想一鍵開老師對話，可在「管理老師」填他的 LINE 連結。</p>`);
   const status=m.leave?`<div class="leave-status">✅ 已標記請假（${d.getMonth()+1}/${d.getDate()}）<button class="linkbtn" data-togglemark>取消標記</button></div>`:"";
   const contacts=t?contactBtns(t):"";
   openModal(`
@@ -487,7 +513,7 @@ function openCourseDetail(i,ds){
     <p class="detail-meta">${c.child} · ${when} · ${displayTime(c)}</p>
     <p class="detail-meta">老師：${teacherName(c)}${c.goal?` · ${c.goal}`:""}</p>
     <button class="btn leave-big" data-leave="${i}" data-ds="${ds}" data-channel="line">📩 用 LINE 請假</button>
-    ${emailBtn}${status}
+    ${lineHint}${emailBtn}${status}
     <div class="field" style="margin-top:10px"><label>這堂課的註記（會在課表顯示 📝）</label><textarea id="f_occnote" rows="2" placeholder="例如：改線上 / 老師說帶課本">${esc(m.note||"")}</textarea></div>
     <button class="btn btn-edit" data-savenote style="width:100%;justify-content:center;margin-bottom:2px">儲存註記</button>
     <div class="contact-label">聯絡老師討論</div>
