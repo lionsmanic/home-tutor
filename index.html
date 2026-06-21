@@ -3,499 +3,645 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Alyssa & 妹妹的暑假課表</title>
-
+<title>Alyssa & 妹妹的暑假週曆</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-
 <style>
   :root{
-    --paper:#FBF8F2;
-    --card:#FFFFFF;
-    --ink:#2B2A33;
-    --muted:#6E6D78;
-    --hair:#ECE7DD;
-
-    --alyssa:#E2674A;      --alyssa-soft:#FBE8E1;
-    --sister:#2A9D8F;      --sister-soft:#DEF0ED;
-    --sun:#E0962E;         --sun-soft:#FAEDD5;
-    --family:#4F9A66;      --family-soft:#E4F1E8;
-    --pause:#8A8A93;       --pause-soft:#EDEDEF;
+    --paper:#FBF8F2; --card:#FFFFFF; --ink:#2B2A33; --muted:#6E6D78; --hair:#ECE7DD;
+    --alyssa:#E2674A; --alyssa-soft:#FBE8E1; --alyssa-line:#F2C9BC;
+    --sister:#2A9D8F; --sister-soft:#DEF0ED; --sister-line:#B9DDD8;
+    --sun:#E0962E; --sun-soft:#FAEDD5;
+    --clash:#D64545; --clash-soft:#FBE4E4;
     --line:#06C755;
-
-    --radius:18px;
-    --shadow:0 8px 24px rgba(60,40,20,0.08);
+    --radius:16px; --shadow:0 8px 24px rgba(60,40,20,.08);
   }
-
   *{box-sizing:border-box;}
   html{-webkit-text-size-adjust:100%;}
-  body{
-    margin:0;
-    font-family:"Noto Sans TC",-apple-system,BlinkMacSystemFont,"Microsoft JhengHei",sans-serif;
-    background:var(--paper);
-    color:var(--ink);
-    line-height:1.65;
-  }
+  body{margin:0;font-family:"Noto Sans TC",-apple-system,BlinkMacSystemFont,"Microsoft JhengHei",sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 14px 70px;}
 
-  .wrap{max-width:960px;margin:0 auto;padding:0 16px 64px;}
+  /* hero */
+  .hero{background:linear-gradient(135deg,var(--alyssa),var(--sun));color:#fff;padding:30px 18px 26px;text-align:center;position:relative;overflow:hidden;}
+  .hero::after{content:"";position:absolute;right:-40px;top:-40px;width:170px;height:170px;border-radius:50%;background:rgba(255,255,255,.14);}
+  .hero .eyebrow{font-family:"Baloo 2",sans-serif;font-weight:800;letter-spacing:4px;font-size:12px;opacity:.9;margin:0;}
+  .hero h1{margin:6px 0 4px;font-size:clamp(22px,5vw,30px);font-weight:900;position:relative;z-index:1;}
+  .hero .today-line{margin:8px auto 0;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);padding:5px 14px;border-radius:999px;font-size:14px;position:relative;z-index:1;}
 
-  /* ---------- Hero ---------- */
-  .hero{
-    background:linear-gradient(135deg,var(--alyssa) 0%,var(--sun) 100%);
-    color:#fff;
-    padding:34px 20px 30px;
-    text-align:center;
-    position:relative;
-    overflow:hidden;
-  }
-  .hero::after{
-    content:"";position:absolute;right:-40px;top:-40px;
-    width:180px;height:180px;border-radius:50%;
-    background:rgba(255,255,255,0.14);
-  }
-  .hero .eyebrow{
-    font-family:"Baloo 2",sans-serif;font-weight:800;
-    letter-spacing:4px;font-size:13px;opacity:.9;margin:0;
-  }
-  .hero h1{
-    margin:6px 0 4px;font-size:clamp(24px,5vw,32px);font-weight:900;
-    position:relative;z-index:1;
-  }
-  .hero .today-line{
-    margin:10px auto 0;display:inline-flex;align-items:center;gap:8px;
-    background:rgba(255,255,255,0.2);padding:6px 14px;border-radius:999px;
-    font-size:14px;font-weight:500;position:relative;z-index:1;
-  }
+  /* conflict banner */
+  .banner{display:none;margin:16px 0 0;background:var(--clash-soft);border:1px solid #F3C0C0;color:#9A2A2A;border-radius:var(--radius);padding:12px 14px;font-size:14px;font-weight:500;}
+  .banner.show{display:block;}
+  .banner b{font-weight:700;}
 
-  /* ---------- Section ---------- */
-  .section-head{
-    display:flex;align-items:baseline;gap:10px;
-    margin:34px 0 14px;
-  }
-  .section-head h2{font-size:20px;margin:0;font-weight:900;}
+  /* toolbar */
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 6px;}
+  .tbtn{border:1px solid var(--hair);background:var(--card);border-radius:11px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
+  .tbtn.primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .tbtn:active{transform:scale(.97);}
+
+  .section-head{display:flex;align-items:baseline;gap:10px;margin:30px 0 12px;}
+  .section-head h2{font-size:19px;margin:0;font-weight:900;}
   .section-head .count{font-size:13px;color:var(--muted);font-weight:500;}
 
-  /* ---------- Cards grid ---------- */
-  .grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
-    gap:14px;
-  }
-  .card{
-    background:var(--card);
-    border:1px solid var(--hair);
-    border-radius:var(--radius);
-    box-shadow:var(--shadow);
-    padding:16px 16px 14px;
-    position:relative;
-    border-left:5px solid var(--pause);
-  }
-  .card.alyssa{border-left-color:var(--alyssa);}
-  .card.sister{border-left-color:var(--sister);}
+  /* today */
+  .today-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+  .restday{background:var(--card);border:1px dashed var(--hair);border-radius:var(--radius);padding:24px;text-align:center;color:var(--muted);font-size:15px;}
 
-  .card .who{
-    font-family:"Baloo 2",sans-serif;font-weight:800;font-size:12px;
-    letter-spacing:.5px;text-transform:uppercase;
-  }
-  .card.alyssa .who{color:var(--alyssa);}
-  .card.sister .who{color:var(--sister);}
+  /* ---- week calendar (desktop grid) ---- */
+  .cal-wrap{overflow-x:auto;background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);padding:8px;}
+  .cal{display:flex;min-width:620px;}
+  .col{flex:1;min-width:78px;}
+  .col.axis{flex:0 0 44px;min-width:44px;}
+  .col-head{height:34px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;border-bottom:2px solid var(--hair);}
+  .col-head.now{color:var(--sun);}
+  .col-body{position:relative;background-image:linear-gradient(var(--hair) 1px,transparent 1px);}
+  .col.axis .col-body{background:none;}
+  .hr{position:absolute;left:0;font-size:11px;color:var(--muted);transform:translateY(-7px);font-variant-numeric:tabular-nums;}
+  .ev{position:absolute;border:none;border-radius:9px;padding:5px 6px;text-align:left;cursor:pointer;overflow:hidden;font-family:inherit;color:#fff;display:flex;flex-direction:column;gap:1px;box-shadow:0 2px 6px rgba(0,0,0,.12);}
+  .ev.alyssa{background:var(--alyssa);}
+  .ev.sister{background:var(--sister);}
+  .ev.clash{outline:3px solid var(--clash);outline-offset:-1px;}
+  .ev-t{font-size:10px;font-weight:700;opacity:.9;font-variant-numeric:tabular-nums;}
+  .ev-title{font-size:12px;font-weight:700;line-height:1.2;}
+  .ev-who{font-size:10px;opacity:.85;}
 
-  .card h3{margin:2px 0 8px;font-size:17px;font-weight:700;}
+  /* desktop flex list */
+  .flexbar{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .flexbar .lbl{font-size:13px;color:var(--muted);font-weight:700;}
+  .flexchip{border:1px dashed var(--hair);background:var(--card);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--ink);}
+  .flexchip .d{color:var(--muted);}
+  .flexchip.alyssa{border-color:var(--alyssa-line);}
+  .flexchip.sister{border-color:var(--sister-line);}
 
-  .meta{font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:12px;}
-  .meta b{color:var(--ink);font-weight:500;}
+  /* ---- mobile agenda ---- */
+  .agz-day{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;}
+  .agz-h{padding:10px 14px;font-weight:900;font-size:15px;background:#fbf6ee;border-bottom:1px solid var(--hair);}
+  .agz-day.now .agz-h{background:var(--sun-soft);color:#9A6611;}
+  .agz-ev{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:none;background:none;border-bottom:1px solid var(--hair);padding:11px 14px;cursor:pointer;font-family:inherit;color:var(--ink);}
+  .agz-ev:last-child{border-bottom:none;}
+  .agz-time{flex:0 0 96px;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;}
+  .agz-ev.alyssa .agz-time{color:var(--alyssa);}
+  .agz-ev.sister .agz-time{color:var(--sister);}
+  .agz-body{flex:1;display:flex;flex-direction:column;}
+  .agz-body small{color:var(--muted);font-size:12.5px;}
+  .clashtag{flex:0 0 auto;color:var(--clash);font-size:12px;font-weight:700;}
 
-  /* ---------- Chips ---------- */
-  .chip{
-    display:inline-block;padding:3px 10px;border-radius:999px;
-    font-size:12px;font-weight:700;margin-bottom:8px;
-  }
-  .chip--fixed{background:var(--ink);color:#fff;}
-  .chip--flex{background:var(--sun-soft);color:#9A6611;}
-  .chip--pause{background:var(--pause-soft);color:var(--pause);}
-  .chip--family{background:var(--family-soft);color:#2F6B43;}
+  /* course list */
+  .list{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+  .list-sub{padding:9px 14px;font-weight:900;font-size:13px;letter-spacing:.5px;}
+  .list-sub.alyssa{color:var(--alyssa);background:var(--alyssa-soft);}
+  .list-sub.sister{color:var(--sister);background:var(--sister-soft);}
+  .row{display:flex;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--hair);}
+  .row:last-child{border-bottom:none;}
+  .row .info{flex:1;min-width:0;}
+  .row .info b{font-weight:700;}
+  .row .info small{display:block;color:var(--muted);font-size:12.5px;}
+  .pill-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;flex:0 0 auto;}
+  .st-fixed{background:var(--ink);color:#fff;}
+  .st-flex{background:var(--sun-soft);color:#9A6611;}
+  .st-family{background:#E4F1E8;color:#2F6B43;}
+  .st-pause{background:#EDEDEF;color:var(--muted);}
+  .row .acts{display:flex;gap:6px;flex:0 0 auto;}
+  .mini{border:none;border-radius:9px;padding:7px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .mini-edit{background:#EEF1F6;color:#384b6e;}
+  .mini-leave{background:var(--alyssa);color:#fff;}
+  .row.sister .mini-leave{background:var(--sister);}
+  .mini-line{background:var(--line);color:#fff;}
+  .mini[disabled]{opacity:.5;cursor:default;}
 
-  /* ---------- Buttons ---------- */
-  .btns{display:flex;flex-wrap:wrap;gap:8px;}
-  .btn{
-    border:none;border-radius:11px;padding:9px 13px;
-    font-size:14px;font-weight:700;cursor:pointer;
-    text-decoration:none;display:inline-flex;align-items:center;gap:6px;
-    font-family:inherit;transition:transform .08s ease,filter .15s ease;
-  }
-  .btn:active{transform:scale(.96);}
-  .btn:focus-visible{outline:3px solid var(--sun);outline-offset:2px;}
-  .btn-leave{background:var(--alyssa);color:#fff;}
-  .card.sister .btn-leave{background:var(--sister);}
+  /* teacher cards */
+  .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;}
+  .tcard{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px;}
+  .tcard h3{margin:0 0 4px;font-size:16px;}
+  .tcard .note{color:var(--muted);font-size:13.5px;margin-bottom:11px;min-height:1.4em;}
+  .tcard .btns{display:flex;gap:8px;}
+  .btn{border:none;border-radius:10px;padding:9px 12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;text-decoration:none;}
   .btn-line{background:var(--line);color:#fff;}
-  .btn-line.ghost{background:#fff;color:#0a8f44;border:1.5px solid var(--line);}
-  .btn[aria-disabled="true"]{background:var(--pause-soft);color:var(--muted);cursor:default;pointer-events:none;}
+  .btn-line[disabled],.btn-line.off{background:#EDEDEF;color:var(--muted);cursor:default;}
+  .btn-edit{background:#EEF1F6;color:#384b6e;}
 
-  /* ---------- Week overview ---------- */
-  .week{
-    background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);
-    box-shadow:var(--shadow);overflow:hidden;
-  }
-  .week-row{
-    display:grid;grid-template-columns:64px 1fr;gap:12px;
-    padding:12px 14px;border-bottom:1px solid var(--hair);align-items:center;
-  }
-  .week-row:last-child{border-bottom:none;}
-  .week-row.is-today{background:var(--sun-soft);}
-  .day-label{font-weight:900;font-size:15px;}
-  .day-label small{display:block;font-weight:500;font-size:11px;color:var(--muted);}
-  .pills{display:flex;flex-wrap:wrap;gap:6px;}
-  .pill{
-    font-size:12.5px;font-weight:500;padding:4px 10px;border-radius:999px;
-    border:1px solid transparent;
-  }
-  .pill.alyssa{background:var(--alyssa-soft);color:#A33C25;border-color:#F2C9BC;}
-  .pill.sister{background:var(--sister-soft);color:#1C6B61;border-color:#B9DDD8;}
-  .pill .t{font-variant-numeric:tabular-nums;font-weight:700;font-size:11.5px;margin-right:6px;opacity:.85;}
-  .empty-day{color:var(--muted);font-size:13px;}
+  /* modal */
+  .backdrop{position:fixed;inset:0;background:rgba(20,15,10,.45);display:none;align-items:flex-end;justify-content:center;z-index:50;padding:0;}
+  .backdrop.show{display:flex;}
+  @media(min-width:560px){.backdrop{align-items:center;padding:16px;}}
+  .modal{background:var(--card);width:100%;max-width:480px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 18px 22px;}
+  @media(min-width:560px){.modal{border-radius:20px;}}
+  .modal h2{margin:2px 0 14px;font-size:19px;}
+  .field{margin-bottom:13px;}
+  .field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px;color:var(--ink);}
+  .field input,.field select,.field textarea{width:100%;padding:10px 11px;border:1.5px solid var(--hair);border-radius:11px;font-size:15px;font-family:inherit;background:#fff;color:var(--ink);}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sun);}
+  .field .hint{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;}
+  .row2{display:flex;gap:10px;}
+  .row2 .field{flex:1;}
+  .seg{display:flex;gap:6px;}
+  .seg button{flex:1;border:1.5px solid var(--hair);background:#fff;border-radius:10px;padding:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted);}
+  .seg button.on{border-color:var(--ink);background:var(--ink);color:#fff;}
+  .modal-acts{display:flex;gap:8px;margin-top:18px;}
+  .modal-acts .btn{flex:1;justify-content:center;padding:12px;}
+  .btn-save{background:var(--sun);color:#fff;}
+  .btn-cancel{background:#EDEDEF;color:var(--ink);}
+  .btn-del{background:var(--clash-soft);color:var(--clash);}
+  .trow{display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--hair);}
+  .trow .tinputs{flex:1;}
+  .trow .tinputs input{margin-bottom:6px;}
+  .trow .rm{flex:0 0 auto;background:var(--clash-soft);color:var(--clash);border:none;border-radius:9px;padding:8px 10px;font-weight:700;cursor:pointer;font-family:inherit;}
 
-  /* ---------- Today empty ---------- */
-  .restday{
-    background:var(--card);border:1px dashed var(--hair);border-radius:var(--radius);
-    padding:26px;text-align:center;color:var(--muted);font-size:15px;
-  }
-
-  /* ---------- Legend ---------- */
-  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 0;}
-
-  /* ---------- How-to ---------- */
-  details.howto{
-    margin-top:34px;background:var(--card);border:1px solid var(--hair);
-    border-radius:var(--radius);box-shadow:var(--shadow);padding:4px 18px;
-  }
-  details.howto summary{cursor:pointer;font-weight:700;padding:12px 0;list-style:none;}
+  details.howto{margin-top:32px;background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);padding:2px 18px;}
+  details.howto summary{cursor:pointer;font-weight:700;padding:13px 0;list-style:none;}
   details.howto summary::-webkit-details-marker{display:none;}
   details.howto summary::before{content:"▸ ";color:var(--sun);}
   details.howto[open] summary::before{content:"▾ ";}
-  details.howto .body{font-size:14px;color:var(--muted);padding-bottom:14px;line-height:1.8;}
-  details.howto code{background:var(--pause-soft);padding:1px 6px;border-radius:6px;font-size:13px;color:var(--ink);}
+  details.howto .body{font-size:14px;color:var(--muted);padding-bottom:14px;line-height:1.85;}
+  details.howto code{background:#EDEDEF;padding:1px 6px;border-radius:6px;font-size:13px;color:var(--ink);}
+  .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:26px;}
 
-  .foot{text-align:center;color:var(--muted);font-size:12.5px;margin-top:30px;}
-
-  /* ---------- Toast ---------- */
-  .toast{
-    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
-    background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;
-    font-size:14px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.25);
-    opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:99;
-    max-width:90vw;text-align:center;
-  }
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:90vw;text-align:center;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
-  @media (max-width:520px){
-    .week-row{grid-template-columns:54px 1fr;}
+  /* responsive view switch */
+  .only-desktop{display:block;}
+  .only-mobile{display:none;}
+  @media(max-width:720px){
+    .only-desktop{display:none;}
+    .only-mobile{display:block;}
+    .row .acts .mini-line{display:none;}
   }
-  @media (prefers-reduced-motion:reduce){
-    .btn,.toast{transition:none;}
-  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
 </style>
 </head>
-
 <body>
   <header class="hero">
     <p class="eyebrow">SUMMER 2026</p>
-    <h1>Alyssa &amp; 妹妹的暑假課表</h1>
+    <h1>Alyssa &amp; 妹妹的暑假週曆</h1>
     <div class="today-line" id="todayLine">載入中…</div>
   </header>
 
   <main class="wrap">
+    <div class="banner" id="banner"></div>
 
-    <!-- 今天 -->
-    <div class="section-head">
-      <h2>☀️ 今天的課</h2>
-      <span class="count" id="todayCount"></span>
-    </div>
-    <div id="todaySection"></div>
-
-    <!-- 本週總覽 -->
-    <div class="section-head"><h2>🗓️ 本週總覽</h2></div>
-    <div class="week" id="weekTable"></div>
-    <div class="legend">
-      <span class="chip chip--fixed">固定課</span>
-      <span class="chip chip--flex">彈性</span>
-      <span class="chip chip--family">家庭任務</span>
-      <span class="chip chip--pause">暫緩</span>
+    <div class="toolbar">
+      <button class="tbtn primary" data-add>＋ 新增課程</button>
+      <button class="tbtn" data-teachers>📇 管理老師</button>
+      <button class="tbtn" data-export>⬇ 匯出備份</button>
+      <button class="tbtn" data-import>⬆ 匯入</button>
+      <button class="tbtn" data-reset>↺ 還原預設</button>
     </div>
 
-    <!-- Alyssa -->
-    <div class="section-head">
-      <h2>Alyssa 的課程</h2>
-      <span class="count" id="alyssaCount"></span>
-    </div>
-    <div class="grid" id="alyssaCards"></div>
+    <div class="section-head"><h2>☀️ 今天的課</h2><span class="count" id="todayCount"></span></div>
+    <div id="today"></div>
 
-    <!-- 妹妹 -->
-    <div class="section-head">
-      <h2>妹妹的課程</h2>
-      <span class="count" id="sisterCount"></span>
-    </div>
-    <div class="grid" id="sisterCards"></div>
+    <div class="section-head"><h2>🗓️ 本週週曆</h2><span class="count">點任一格可編輯</span></div>
+    <div id="calendar"></div>
 
-    <!-- 老師聯絡 -->
+    <div class="section-head"><h2>📚 課程清單</h2><span class="count">編輯／刪除／請假</span></div>
+    <div id="courseList"></div>
+
     <div class="section-head"><h2>📇 老師聯絡中心</h2></div>
-    <div class="grid" id="teacherCards"></div>
+    <div class="tgrid" id="teachers"></div>
 
-    <!-- 使用說明 -->
     <details class="howto">
-      <summary>✏️ 怎麼修改這個課表？</summary>
+      <summary>✏️ 使用說明（新增課程、加 LINE、衝堂、備份）</summary>
       <div class="body">
-        全部資料都在這個檔案最下方的 <code>&lt;script&gt;</code> 裡，分成兩塊，改完存檔 push 到 GitHub 就會更新：<br><br>
-        <b>1. 老師（teachers）</b>：填上每位老師的 <code>line</code>。<br>
-        ・個人好友：到 LINE「加好友 → 我的 QR code / 邀請」拿到 <code>https://line.me/ti/p/xxxx</code> 貼上。<br>
-        ・官方帳號：用 <code>https://line.me/R/oaMessage/@帳號ID/?</code> 還能直接帶入文字（最接近自動送出）。<br>
-        ・先不填就留 <code>"#"</code>，請假會改用 LINE 分享選單。<br><br>
-        <b>2. 課程（courses）</b>：固定鐘點的填 <code>start</code>／<code>end</code>（24 小時制，如 <code>"09:30"</code>、<code>"14:00"</code>），課表會自動照時間排序；沒固定時間的用 <code>timeNote</code> 寫說明（如「晚餐後 20 分鐘」）。再改 <code>day</code>（週一～週日 / 週末）、<code>status</code>（fixed 固定／flex 彈性／family 家庭／pause 暫緩）。標 <code>pause</code> 的不會出現在今天與週總覽。<br><br>
-        <b>請假鈕</b>：按下後會自動把請假訊息複製好、並打開那位老師的 LINE，你貼上送出就完成。
+        <b>新增／修改／刪除課程</b>：按上方「＋ 新增課程」，或在「課程清單／週曆」點任一堂課就能編輯，最底下有刪除鈕。固定鐘點選「固定時間」用時間選擇器挑起訖（精確到分）；像籃球、滑冰這種沒固定時間的選「彈性」打一句說明即可。<br><br>
+        <b>加老師的個人 LINE（一點就開對話）</b>：按「📇 管理老師」，把每位老師的 LINE 連結貼進去就好。連結怎麼拿：<br>
+        ① 打開你跟老師的 LINE 對話 → 點他大頭貼進個人檔案 → 右上「分享」或「⋯」→ 複製連結（會是 <code>https://line.me/ti/p/～xxxx</code>）。<br>
+        ② 或請老師自己到 LINE：主頁 → 設定 → 個人檔案 → 分享 → 複製連結傳給你。<br>
+        貼好之後，老師卡片的「打開 LINE」和請假鈕就會直接開那位老師的對話。<br><br>
+        <b>衝堂提醒</b>：兩堂課同一天時間重疊，週曆會自動把它們並排顯示並標紅框，最上面也會跳提醒。兩姐妹同時段（接送要分頭）也會抓出來。<br><br>
+        <b>資料儲存</b>：改的內容會存在這支手機／瀏覽器裡（換裝置不會自動同步）。用「⬇ 匯出備份」可複製一份 JSON，貼到另一台用「⬆ 匯入」即可搬過去，也可當備份。
       </div>
     </details>
 
-    <p class="foot">為 Alyssa 和妹妹做的暑假課表 · 放在 GitHub Pages 上，手機開最方便 🌴</p>
+    <p class="foot">為 Alyssa 和妹妹做的暑假週曆 · 放在 GitHub Pages，手機開最順手 🌴</p>
   </main>
 
+  <div class="backdrop" id="backdrop"><div class="modal" id="modal"></div></div>
   <div class="toast" id="toast"></div>
 
 <script>
-/* ============================================================
-   設定區：改這裡就好
-   ============================================================ */
-
-// 1) 老師：line 填好友連結 / 官方帳號連結；先空就留 "#"
-const teachers = {
-  reading:  { name:"陪讀老師",   line:"#", note:"看獵豹之前的 video，帶 Alyssa 做 mindmap 筆記" },
-  music:    { name:"音樂老師",   line:"#", note:"小提琴或大提琴，先決定再開課" },
-  swimming: { name:"游泳教練",   line:"#", note:"練轉身、跳水、蝶腳" },
-  coding:   { name:"程式老師",   line:"#", note:"線上課，暑假先從這個開始" },
-  aops:     { name:"AoPS 老師",  line:"#", note:"先暫緩，等程式語言上軌道再說" },
-  science:  { name:"Science 老師",line:"#", note:"先暫緩，避免課排太滿" },
-  skating:  { name:"極光滑冰",   line:"#", note:"有空再去，純欣賞放鬆" },
-  dad:      { name:"爸爸",       line:"#", note:"晚餐後陪 Alyssa 練籃球運球" },
+/* ====================================================================
+   預設資料（第一次打開、或按「還原預設」會用這份）
+   teachers：line 填好友連結，先空就留 ""；note 為備註
+   courses：固定時間填 start/end（"HH:MM"），彈性填 timeNote
+   ==================================================================== */
+const DEFAULT_DATA = {
+  teachers: [
+    { id:"t_reading",  name:"陪讀老師",    line:"", note:"看獵豹之前的 video，帶 Alyssa 做 mindmap 筆記" },
+    { id:"t_music",    name:"音樂老師",    line:"", note:"小提琴或大提琴，先決定再開課" },
+    { id:"t_swimming", name:"游泳教練",    line:"", note:"練轉身、跳水、蝶腳" },
+    { id:"t_coding",   name:"程式老師",    line:"", note:"線上課，暑假先從這個開始" },
+    { id:"t_aops",     name:"AoPS 老師",   line:"", note:"先暫緩，等程式穩定再說" },
+    { id:"t_science",  name:"Science 老師",line:"", note:"先暫緩，避免課太滿" },
+    { id:"t_skating",  name:"極光滑冰",    line:"", note:"有空再去，純欣賞放鬆" },
+    { id:"t_dad",      name:"爸爸",        line:"", note:"晚餐後陪 Alyssa 練籃球運球" },
+  ],
+  courses: [
+    { child:"Alyssa", title:"獵豹 video + mindmap 筆記", day:"週一", start:"10:00", end:"11:00", teacherId:"t_reading",  status:"fixed",  goal:"看完影片用 mindmap 整理重點" },
+    { child:"Alyssa", title:"程式語言（線上）",          day:"週二", start:"19:30", end:"20:30", teacherId:"t_coding",   status:"fixed",  goal:"暑假線上課先試這一門" },
+    { child:"Alyssa", title:"游泳：轉身／跳水／蝶腳",     day:"週三", start:"15:00", end:"16:00", teacherId:"t_swimming", status:"fixed",  goal:"轉身、跳水、蝶腳技術訓練" },
+    { child:"Alyssa", title:"小提琴 or 大提琴",          day:"週四", timeNote:"樂器確定後再排", teacherId:"t_music",   status:"flex",   goal:"先決定學哪一種" },
+    { child:"Alyssa", title:"跟爸爸學籃球運球",          day:"週五", timeNote:"晚餐後 20 分鐘", teacherId:"t_dad",     status:"family", goal:"低壓力陪伴，建立球感" },
+    { child:"Alyssa", title:"極光看滑冰",                day:"週末", timeNote:"有空再去",       teacherId:"t_skating", status:"flex",   goal:"彈性活動，不排成壓力" },
+    { child:"Alyssa", title:"AoPS（線上）",             day:"未排", teacherId:"t_aops",    status:"pause",  goal:"等程式穩定後再考慮" },
+    { child:"Alyssa", title:"Science（線上）",          day:"未排", teacherId:"t_science", status:"pause",  goal:"先不加，避免太滿" },
+    { child:"妹妹", title:"音樂啟蒙", day:"週二", timeNote:"時間未定", teacherId:"t_music",    status:"flex", goal:"以興趣為主" },
+    { child:"妹妹", title:"游泳基礎", day:"週四", timeNote:"時間未定", teacherId:"t_swimming", status:"flex", goal:"熟悉水性，建立安全感" },
+  ]
 };
 
-// 2) 課程：day=週一~週日 或 週末／未排；status=fixed/flex/family/pause
-// 時間填法：
-//   有固定鐘點 → 填 start / end，24 小時制 "HH:MM"（例如 "09:30"、"14:00"）
-//   彈性、沒固定鐘點 → 用 timeNote 寫說明（例如 "晚餐後 20 分鐘"）
-//   暫緩(pause) → 時間留空不用填
-// ⚠️ 下面有 start/end 的時間都是「範例」，請改成跟老師敲定的實際時間。
-const courses = [
-  // ---- Alyssa ----
-  { child:"Alyssa", title:"獵豹 video + mindmap 筆記", day:"週一", start:"10:00", end:"11:00", teacher:"reading",  status:"fixed",  goal:"看完影片用 mindmap 整理重點" },
-  { child:"Alyssa", title:"程式語言（線上）",          day:"週二", start:"19:30", end:"20:30", teacher:"coding",   status:"fixed",  goal:"暑假線上課先試這一門，不要一次加太多" },
-  { child:"Alyssa", title:"游泳：轉身／跳水／蝶腳",     day:"週三", start:"15:00", end:"16:00", teacher:"swimming", status:"fixed",  goal:"針對轉身、跳水、蝶腳做技術訓練" },
-  { child:"Alyssa", title:"小提琴 or 大提琴",          day:"週四", timeNote:"樂器確定後再排", teacher:"music",   status:"flex",   goal:"先決定學哪一種，再安排老師" },
-  { child:"Alyssa", title:"跟爸爸學籃球運球",          day:"週五", timeNote:"晚餐後 20 分鐘", teacher:"dad",     status:"family", goal:"低壓力陪伴，建立球感" },
-  { child:"Alyssa", title:"極光看滑冰",                day:"週末", timeNote:"有空再去",       teacher:"skating", status:"flex",   goal:"彈性活動，不排成壓力" },
-  { child:"Alyssa", title:"AoPS（線上）",             day:"未排", teacher:"aops",     status:"pause",  goal:"等程式語言穩定後再考慮" },
-  { child:"Alyssa", title:"Science（線上）",          day:"未排", teacher:"science",  status:"pause",  goal:"先不加，避免暑假太滿" },
+/* ---------- 狀態 + 儲存 ---------- */
+const STORE_KEY = "alyssa-schedule-v2";
+let teachers = [], courses = [];
 
-  // ---- 妹妹（先放範例，之後再補）----
-  { child:"妹妹", title:"音樂啟蒙",   day:"週二", timeNote:"時間未定", teacher:"music",    status:"flex", goal:"以興趣為主，輕鬆玩音樂" },
-  { child:"妹妹", title:"游泳基礎",   day:"週四", timeNote:"時間未定", teacher:"swimming", status:"flex", goal:"熟悉水性，建立安全感" },
-];
-
-/* ============================================================
-   以下不用改
-   ============================================================ */
-
-const DAY_ISO = { "週一":1,"週二":2,"週三":3,"週四":4,"週五":5,"週六":6,"週日":7 };
-const STATUS = {
-  fixed:  {label:"固定課",   cls:"chip--fixed"},
-  flex:   {label:"彈性",     cls:"chip--flex"},
-  family: {label:"家庭任務", cls:"chip--family"},
-  pause:  {label:"暫緩",     cls:"chip--pause"},
-};
-const childClass = c => c.child === "Alyssa" ? "alyssa" : "sister";
-
-// 時間顯示與排序
-const toMin = t => { const [h,m]=t.split(":").map(Number); return h*60+m; };
-function displayTime(c){
-  if(c.start) return c.end ? `${c.start}–${c.end}` : c.start;
-  if(c.timeNote) return c.timeNote;
-  return "時間未定";
+function loadData(){
+  try{ const raw=localStorage.getItem(STORE_KEY); if(raw){ const d=JSON.parse(raw); return d; } }catch(e){}
+  return null;
 }
-// 有鐘點的照時間排，沒鐘點的排在後面
-const sortKey = c => c.start ? toMin(c.start) : 99999;
+function saveData(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify({teachers,courses})); }
+  catch(e){ /* 在預覽環境可能無法儲存，忽略即可，部署到 GitHub Pages 後正常 */ }
+}
+function initData(){
+  const d = loadData();
+  if(d && d.courses && d.teachers){ teachers=d.teachers; courses=d.courses; }
+  else { teachers=JSON.parse(JSON.stringify(DEFAULT_DATA.teachers)); courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); }
+}
 
-// 今天是星期幾（1=週一 … 7=週日）
+/* ---------- 工具 ---------- */
+const DAYS = ["週一","週二","週三","週四","週五","週六","週日"];
+const DAY_ISO = {"週一":1,"週二":2,"週三":3,"週四":4,"週五":5,"週六":6,"週日":7};
+const STATUS = { fixed:["固定課","st-fixed"], flex:["彈性","st-flex"], family:["家庭任務","st-family"], pause:["暫緩","st-pause"] };
 const now = new Date();
-const isoToday = now.getDay() === 0 ? 7 : now.getDay();
-
-courses.forEach((c,i)=>{
-  c.id = i;
-  c.dayIso = DAY_ISO[c.day] || null;
-  c.weekend = (c.day === "週末");
-});
-
-const isToday = c =>
-  c.status !== "pause" &&
-  ( c.dayIso === isoToday || (c.weekend && (isoToday===6 || isoToday===7)) );
-
-// 取得本週某一天的日期（M/D）
+const isoToday = now.getDay()===0 ? 7 : now.getDay();
+const toMin = t => { const [h,m]=t.split(":").map(Number); return h*60+m; };
+const childClass = c => c.child==="Alyssa" ? "alyssa" : "sister";
+const teacherById = id => teachers.find(t=>t.id===id);
+const teacherName = c => { const t=teacherById(c.teacherId); return t?t.name:"未指定老師"; };
+const uid = () => "t_"+Math.random().toString(36).slice(2,8);
+function displayTime(c){ if(c.start) return c.end?`${c.start}–${c.end}`:c.start; if(c.timeNote) return c.timeNote; return "時間未定"; }
+const sortKey = c => c.start ? toMin(c.start) : 99999;
+function todayName(){ return isoToday<=7 ? DAYS[isoToday-1] : ""; }
+function uniqueChildren(){ const s=[...new Set(courses.map(c=>c.child))]; ["Alyssa","妹妹"].forEach(n=>{if(!s.includes(n))s.push(n);}); return s; }
 function dateLabel(iso){
-  if(!iso) return "";
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (isoToday - 1));
-  const d = new Date(monday);
-  d.setDate(monday.getDate() + (iso - 1));
-  return (d.getMonth()+1) + "/" + d.getDate();
+  const monday=new Date(now); monday.setDate(now.getDate()-(isoToday-1));
+  const d=new Date(monday); d.setDate(monday.getDate()+(iso-1));
+  return (d.getMonth()+1)+"/"+d.getDate();
 }
 
-/* ---------- 請假：複製訊息 + 開老師 LINE ---------- */
-function doLeave(id){
-  const c = courses[id];
-  const t = teachers[c.teacher];
-  const dStr = c.dayIso ? `${dateLabel(c.dayIso)}（${c.day}）` : `${c.day} `;
-  const timeStr = c.start ? `${c.start}–${c.end} ` : "";
-  const msg =
-`${t.name}您好，我是 ${c.child} 的家長。
-${c.child} ${dStr}${timeStr}的「${c.title}」想請假一次，
-不好意思，麻煩老師了，謝謝！🙏`;
-
-  copyText(msg).then(()=>{
-    if(t.line && t.line !== "#"){
-      toast("✅ 請假訊息已複製，幫你開老師 LINE，貼上送出即可");
-      window.open(t.line, "_blank");
-    } else {
-      toast("✅ 訊息已複製，開啟 LINE 選老師後貼上送出");
-      window.open("https://line.me/R/share?text=" + encodeURIComponent(msg), "_blank");
+/* ---------- 衝堂偵測 ---------- */
+function computeConflicts(){
+  const conf=new Set(); const notes=[];
+  const byDay={};
+  courses.forEach((c,i)=>{ if(c.status!=="pause" && c.start && c.end){ (byDay[c.day]=byDay[c.day]||[]).push(i); } });
+  Object.entries(byDay).forEach(([day,arr])=>{
+    for(let a=0;a<arr.length;a++) for(let b=a+1;b<arr.length;b++){
+      const x=courses[arr[a]], y=courses[arr[b]];
+      if(toMin(x.start)<toMin(y.end) && toMin(y.start)<toMin(x.end)){
+        conf.add(arr[a]); conf.add(arr[b]);
+        const both = x.child!==y.child ? "（兩人同時段，接送要注意）" : "（同一人衝堂）";
+        notes.push(`${day} ${x.start} 「${x.title}」與「${y.title}」重疊${both}`);
+      }
     }
   });
-}
-
-function copyText(text){
-  if(navigator.clipboard && window.isSecureContext){
-    return navigator.clipboard.writeText(text).catch(()=>fallbackCopy(text));
-  }
-  return fallbackCopy(text);
-}
-function fallbackCopy(text){
-  return new Promise(res=>{
-    const ta=document.createElement("textarea");
-    ta.value=text;ta.style.position="fixed";ta.style.opacity="0";
-    document.body.appendChild(ta);ta.select();
-    try{document.execCommand("copy");}catch(e){}
-    document.body.removeChild(ta);res();
-  });
-}
-
-let toastTimer;
-function toast(text){
-  const el=document.getElementById("toast");
-  el.textContent=text;el.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>el.classList.remove("show"),3200);
-}
-
-/* ---------- 卡片 ---------- */
-function courseCard(c){
-  const t = teachers[c.teacher];
-  const s = STATUS[c.status];
-  const leaveBtn = c.status === "pause"
-    ? `<button class="btn btn-leave" aria-disabled="true">暫緩中</button>`
-    : `<button class="btn btn-leave" data-leave data-cid="${c.id}">請假</button>`;
-  const lineBtn = (t.line && t.line!=="#")
-    ? `<a class="btn btn-line ghost" href="${t.line}" target="_blank" rel="noopener">LINE 討論</a>`
-    : `<a class="btn btn-line ghost" aria-disabled="true">未設定 LINE</a>`;
-  return `
-    <div class="card ${childClass(c)}">
-      <div class="who">${c.child}</div>
-      <span class="chip ${s.cls}">${s.label}</span>
-      <h3>${c.title}</h3>
-      <div class="meta">
-        <b>${c.day}</b> · ${displayTime(c)}<br>
-        老師：${t.name}<br>
-        目標：${c.goal}
-      </div>
-      <div class="btns">${leaveBtn}${lineBtn}</div>
-    </div>`;
+  return {conf,notes};
 }
 
 /* ---------- 今天 ---------- */
+function isToday(c){ return c.status!=="pause" && ( DAY_ISO[c.day]===isoToday || (c.day==="週末" && (isoToday===6||isoToday===7)) ); }
 function renderToday(){
-  const list = courses.filter(isToday).sort((a,b)=>sortKey(a)-sortKey(b));
-  document.getElementById("todayCount").textContent =
-    list.length ? `${list.length} 堂` : "";
-  const box = document.getElementById("todaySection");
-  if(!list.length){
-    box.innerHTML = `<div class="restday">今天沒有排課，放鬆一下 🌴</div>`;
-    return;
-  }
-  box.className = "grid";
-  box.innerHTML = list.map(courseCard).join("");
-}
-
-/* ---------- 本週總覽 ---------- */
-function renderWeek(){
-  const rows = [
-    {label:"週一",iso:1}, {label:"週二",iso:2}, {label:"週三",iso:3},
-    {label:"週四",iso:4}, {label:"週五",iso:5},
-    {label:"週六・日",iso:6,weekend:true},
-  ];
-  const html = rows.map(r=>{
-    const todayHit = r.weekend ? (isoToday===6||isoToday===7) : (r.iso===isoToday);
-    const items = courses.filter(c=>{
-      if(c.status==="pause") return false;
-      if(r.weekend) return c.dayIso===6 || c.dayIso===7 || c.weekend;
-      return c.dayIso===r.iso;
-    }).sort((a,b)=>sortKey(a)-sortKey(b));
-    const pills = items.length
-      ? items.map(c=>`<span class="pill ${childClass(c)}"><span class="t">${displayTime(c)}</span>${c.title}</span>`).join("")
-      : `<span class="empty-day">—</span>`;
-    return `
-      <div class="week-row ${todayHit?'is-today':''}">
-        <div class="day-label">${r.label}${todayHit?'<small>今天</small>':''}</div>
-        <div class="pills">${pills}</div>
-      </div>`;
+  const {conf}=computeConflicts();
+  const list = courses.map((c,i)=>({c,i})).filter(o=>isToday(o.c)).sort((a,b)=>sortKey(a.c)-sortKey(b.c));
+  document.getElementById("todayCount").textContent = list.length?`${list.length} 堂`:"";
+  const box=document.getElementById("today");
+  if(!list.length){ box.className=""; box.innerHTML=`<div class="restday">今天沒有排課，放鬆一下 🌴</div>`; return; }
+  box.className="today-grid";
+  box.innerHTML=list.map(o=>{
+    const c=o.c, t=teacherById(c.teacherId);
+    const clash=conf.has(o.i)?`<span class="clashtag">⚠️ 衝堂</span>`:"";
+    const lineBtn = (t&&t.line)?`<a class="mini mini-line" href="${t.line}" target="_blank" rel="noopener">LINE</a>`:"";
+    return `<div class="row ${childClass(c)}" style="background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);">
+      <div class="info"><b>${displayTime(c)}</b> ${clash}<br><b>${c.title}</b><small>${c.child} · ${teacherName(c)}</small></div>
+      <div class="acts">
+        <button class="mini mini-leave" data-leave="${o.i}">請假</button>
+        ${lineBtn}
+        <button class="mini mini-edit" data-edit="${o.i}">編輯</button>
+      </div></div>`;
   }).join("");
-  document.getElementById("weekTable").innerHTML = html;
 }
 
-/* ---------- 老師 ---------- */
-function renderTeachers(){
-  document.getElementById("teacherCards").innerHTML =
-    Object.values(teachers).map(t=>{
-      const btn = (t.line && t.line!=="#")
-        ? `<a class="btn btn-line" href="${t.line}" target="_blank" rel="noopener">打開 LINE</a>`
-        : `<a class="btn btn-line ghost" aria-disabled="true">尚未設定 LINE</a>`;
-      return `
-        <div class="card">
-          <h3>${t.name}</h3>
-          <div class="meta">${t.note}</div>
-          <div class="btns">${btn}</div>
+/* ---------- 週曆 ---------- */
+function layoutDay(evs){
+  evs.sort((a,b)=>a.s-b.s||a.e-b.e);
+  const colEnd=[];
+  evs.forEach(ev=>{ let i=0; while(i<colEnd.length && ev.s<colEnd[i]) i++; ev.col=i; colEnd[i]=ev.e; });
+  let cur=[],curEnd=-1;
+  const flush=()=>{ if(cur.length){ const n=Math.max(...cur.map(e=>e.col))+1; cur.forEach(e=>e.ncols=n);} cur=[];curEnd=-1; };
+  evs.forEach(ev=>{ if(cur.length && ev.s>=curEnd) flush(); cur.push(ev); curEnd=Math.max(curEnd,ev.e); });
+  flush();
+  return evs;
+}
+function renderCalendarGrid(){
+  const {conf}=computeConflicts();
+  const timed=courses.map((c,i)=>({c,i})).filter(o=>o.c.status!=="pause" && o.c.start && o.c.end);
+  let loH=9,hiH=20;
+  if(timed.length){
+    loH=Math.floor(Math.min(...timed.map(o=>toMin(o.c.start)))/60);
+    hiH=Math.ceil(Math.max(...timed.map(o=>toMin(o.c.end)))/60);
+  }
+  if(hiH<=loH) hiH=loH+1;
+  const hourPx=56, top0=loH*60, bodyH=(hiH-loH)*hourPx;
+  let axis=""; for(let h=loH;h<=hiH;h++) axis+=`<div class="hr" style="top:${(h-loH)*hourPx}px">${String(h).padStart(2,"0")}:00</div>`;
+  let cols="";
+  DAYS.forEach(day=>{
+    const evs=layoutDay(timed.filter(o=>o.c.day===day).map(o=>({...o,s:toMin(o.c.start),e:toMin(o.c.end)})));
+    let blocks="";
+    evs.forEach(o=>{
+      const w=100/o.ncols, left=o.col*w;
+      const top=(o.s-top0)/60*hourPx, ht=Math.max((o.e-o.s)/60*hourPx-3,20);
+      const cls=childClass(o.c)+(conf.has(o.i)?" clash":"");
+      blocks+=`<button class="ev ${cls}" data-edit="${o.i}" style="top:${top}px;height:${ht}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px)">
+        <span class="ev-t">${o.c.start}</span><span class="ev-title">${o.c.title}</span><span class="ev-who">${o.c.child}</span></button>`;
+    });
+    const nw=day===todayName()?"now":"";
+    cols+=`<div class="col"><div class="col-head ${nw}">${day}</div><div class="col-body" style="height:${bodyH}px;background-size:100% ${hourPx}px">${blocks}</div></div>`;
+  });
+  const grid=`<div class="cal-wrap"><div class="cal"><div class="col axis"><div class="col-head"></div><div class="col-body" style="height:${bodyH}px">${axis}</div></div>${cols}</div></div>`;
+  // 彈性（無固定時間）課程列在下方
+  const flex=courses.map((c,i)=>({c,i})).filter(o=>o.c.status!=="pause" && !o.c.start);
+  let flexbar="";
+  if(flex.length){
+    flexbar=`<div class="flexbar"><span class="lbl">彈性／無固定時間：</span>`+
+      flex.map(o=>`<button class="flexchip ${childClass(o.c)}" data-edit="${o.i}"><span class="d">${o.c.day}</span> ${o.c.title} · ${o.c.child}</button>`).join("")+`</div>`;
+  }
+  return grid+flexbar;
+}
+function renderCalendarAgenda(){
+  const {conf}=computeConflicts();
+  const order=["週一","週二","週三","週四","週五","週六","週日","週末"];
+  let html="";
+  order.forEach(day=>{
+    const evs=courses.map((c,i)=>({c,i})).filter(o=>o.c.status!=="pause" && o.c.day===day).sort((a,b)=>sortKey(a.c)-sortKey(b.c));
+    if(!evs.length) return;
+    const nw=day===todayName()?"now":"";
+    html+=`<div class="agz-day ${nw}"><div class="agz-h">${day}${day===todayName()?" · 今天":""}</div>`;
+    evs.forEach(o=>{
+      const clash=conf.has(o.i)?`<span class="clashtag">⚠️ 衝堂</span>`:"";
+      html+=`<button class="agz-ev ${childClass(o.c)}" data-edit="${o.i}">
+        <span class="agz-time">${displayTime(o.c)}</span>
+        <span class="agz-body"><b>${o.c.title}</b><small>${o.c.child} · ${teacherName(o.c)}</small></span>${clash}</button>`;
+    });
+    html+="</div>";
+  });
+  return html || `<div class="restday">還沒有排課，點上面「＋ 新增課程」開始 ✏️</div>`;
+}
+const mqMobile = window.matchMedia("(max-width:720px)");
+function renderCalendar(){
+  document.getElementById("calendar").innerHTML = mqMobile.matches ? renderCalendarAgenda() : renderCalendarGrid();
+}
+
+/* ---------- 課程清單 ---------- */
+function renderCourseList(){
+  const box=document.getElementById("courseList");
+  const kids=uniqueChildren().filter(k=>courses.some(c=>c.child===k));
+  box.innerHTML = `<div class="list">`+ kids.map(kid=>{
+    const cls = kid==="Alyssa"?"alyssa":"sister";
+    const rows = courses.map((c,i)=>({c,i})).filter(o=>o.c.child===kid)
+      .sort((a,b)=>(DAY_ISO[a.c.day]||99)-(DAY_ISO[b.c.day]||99) || sortKey(a.c)-sortKey(b.c))
+      .map(o=>{
+        const c=o.c, t=teacherById(c.teacherId), st=STATUS[c.status];
+        const leave = c.status==="pause" ? `<button class="mini mini-leave" disabled>暫緩</button>`
+                    : `<button class="mini mini-leave" data-leave="${o.i}">請假</button>`;
+        const lineBtn = (t&&t.line)?`<a class="mini mini-line" href="${t.line}" target="_blank" rel="noopener">LINE</a>`:"";
+        return `<div class="row ${cls}">
+          <span class="pill-status ${st[1]}">${st[0]}</span>
+          <div class="info"><b>${c.title}</b><small>${c.day} · ${displayTime(c)} · ${teacherName(c)}</small></div>
+          <div class="acts">${leave}${lineBtn}<button class="mini mini-edit" data-edit="${o.i}">編輯</button></div>
         </div>`;
-    }).join("");
+      }).join("");
+    return `<div class="list-sub ${cls}">${kid}</div>${rows}`;
+  }).join("") + `</div>`;
 }
 
-/* ---------- 初始化 ---------- */
-function fmtTodayLine(){
-  const names=["週日","週一","週二","週三","週四","週五","週六"];
-  return `📅 今天 ${now.getMonth()+1}/${now.getDate()} ${names[now.getDay()]}`;
+/* ---------- 老師卡片 ---------- */
+function renderTeachers(){
+  document.getElementById("teachers").innerHTML = teachers.map(t=>{
+    const open = t.line ? `<a class="btn btn-line" href="${t.line}" target="_blank" rel="noopener">打開 LINE</a>`
+                        : `<span class="btn btn-line off">未設定 LINE</span>`;
+    return `<div class="tcard"><h3>${t.name}</h3><div class="note">${t.note||""}</div>
+      <div class="btns">${open}<button class="btn btn-edit" data-teachers>編輯</button></div></div>`;
+  }).join("");
 }
 
-document.getElementById("todayLine").textContent = fmtTodayLine();
+/* ---------- 衝堂 banner ---------- */
+function renderBanner(){
+  const {notes}=computeConflicts();
+  const b=document.getElementById("banner");
+  if(notes.length){ b.classList.add("show"); b.innerHTML=`<b>⚠️ 本週有 ${notes.length} 處時間重疊：</b><br>`+notes.join("<br>"); }
+  else b.classList.remove("show");
+}
 
-const alyssa = courses.filter(c=>c.child==="Alyssa");
-const sister = courses.filter(c=>c.child==="妹妹");
-document.getElementById("alyssaCount").textContent = `${alyssa.length} 門`;
-document.getElementById("sisterCount").textContent = `${sister.length} 門`;
-document.getElementById("alyssaCards").innerHTML = alyssa.map(courseCard).join("");
-document.getElementById("sisterCards").innerHTML = sister.map(courseCard).join("");
+/* ---------- 全部重畫 ---------- */
+function renderAll(){ renderBanner(); renderToday(); renderCalendar(); renderCourseList(); renderTeachers(); }
 
-renderToday();
-renderWeek();
-renderTeachers();
+/* ---------- 請假：複製訊息 + 開老師 LINE ---------- */
+function doLeave(i){
+  const c=courses[i], t=teacherById(c.teacherId);
+  const tname=t?t.name:"老師";
+  const iso=DAY_ISO[c.day];
+  const dStr = iso?`${dateLabel(iso)}（${c.day}）`:`${c.day} `;
+  const timeStr = c.start?`${c.start}–${c.end} `:"";
+  const msg=`${tname}您好，我是 ${c.child} 的家長。\n${c.child} ${dStr}${timeStr}的「${c.title}」想請假一次，\n不好意思，麻煩老師了，謝謝！🙏`;
+  copyText(msg).then(()=>{
+    if(t&&t.line){ toast("✅ 請假訊息已複製，幫你開老師 LINE，貼上送出即可"); window.open(t.line,"_blank"); }
+    else { toast("✅ 訊息已複製，開啟 LINE 選老師後貼上送出"); window.open("https://line.me/R/share?text="+encodeURIComponent(msg),"_blank"); }
+  });
+}
+function copyText(text){
+  if(navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).catch(()=>fallbackCopy(text));
+  return fallbackCopy(text);
+}
+function fallbackCopy(text){ return new Promise(res=>{ const ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");}catch(e){} document.body.removeChild(ta); res(); }); }
 
-// 請假鈕（事件委派，避免內嵌字串跳脫問題）
-document.addEventListener("click", e=>{
-  const b = e.target.closest("[data-leave]");
-  if(b) doLeave(Number(b.dataset.cid));
+/* ---------- Modal ---------- */
+const backdrop=document.getElementById("backdrop"), modal=document.getElementById("modal");
+function openModal(html){ modal.innerHTML=html; backdrop.classList.add("show"); }
+function closeModal(){ backdrop.classList.remove("show"); }
+backdrop.addEventListener("click",e=>{ if(e.target===backdrop) closeModal(); });
+
+/* 課程編輯 */
+let editIndex=null, timeMode="fixed";
+function openCourseModal(i){
+  editIndex = (i===null||i===undefined)?null:i;
+  const c = editIndex===null ? {child:"Alyssa",title:"",day:"週一",start:"",end:"",timeNote:"",teacherId:(teachers[0]&&teachers[0].id)||"",status:"fixed",goal:""} : courses[editIndex];
+  timeMode = c.start ? "fixed" : "flex";
+  const kidOpts = uniqueChildren().map(k=>`<option ${c.child===k?"selected":""}>${k}</option>`).join("");
+  const dayOpts = [...DAYS,"週末","未排"].map(d=>`<option ${c.day===d?"selected":""}>${d}</option>`).join("");
+  const teaOpts = teachers.map(t=>`<option value="${t.id}" ${c.teacherId===t.id?"selected":""}>${t.name}</option>`).join("");
+  const stOpts = Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${c.status===k?"selected":""}>${v[0]}</option>`).join("");
+  openModal(`
+    <h2>${editIndex===null?"新增課程":"編輯課程"}</h2>
+    <div class="row2">
+      <div class="field"><label>孩子</label><select id="f_child">${kidOpts}</select></div>
+      <div class="field"><label>星期</label><select id="f_day">${dayOpts}</select></div>
+    </div>
+    <div class="field"><label>課程名稱</label><input id="f_title" value="${c.title.replace(/"/g,'&quot;')}" placeholder="例如：游泳訓練"></div>
+    <div class="field"><label>時間</label>
+      <div class="seg"><button id="seg_fixed" class="${timeMode==="fixed"?"on":""}" data-mode="fixed">固定時間</button><button id="seg_flex" class="${timeMode==="flex"?"on":""}" data-mode="flex">彈性說明</button></div>
+    </div>
+    <div id="fixedBox" class="row2" style="${timeMode==="fixed"?"":"display:none"}">
+      <div class="field"><label>開始</label><input id="f_start" type="time" value="${c.start||""}"></div>
+      <div class="field"><label>結束</label><input id="f_end" type="time" value="${c.end||""}"></div>
+    </div>
+    <div id="flexBox" class="field" style="${timeMode==="flex"?"":"display:none"}">
+      <label>時間說明</label><input id="f_note" value="${(c.timeNote||"").replace(/"/g,'&quot;')}" placeholder="例如：晚餐後 20 分鐘 / 有空再去">
+    </div>
+    <div class="row2">
+      <div class="field"><label>老師</label><select id="f_teacher">${teaOpts}</select></div>
+      <div class="field"><label>狀態</label><select id="f_status">${stOpts}</select></div>
+    </div>
+    <div class="field"><label>目標／備註</label><input id="f_goal" value="${(c.goal||"").replace(/"/g,'&quot;')}" placeholder="這堂課的重點"></div>
+    <div class="modal-acts">
+      ${editIndex===null?"":'<button class="btn btn-del" data-delcourse>刪除</button>'}
+      <button class="btn btn-cancel" data-close>取消</button>
+      <button class="btn btn-save" data-savecourse>儲存</button>
+    </div>`);
+  modal.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{
+    timeMode=b.dataset.mode;
+    modal.querySelector("#seg_fixed").classList.toggle("on",timeMode==="fixed");
+    modal.querySelector("#seg_flex").classList.toggle("on",timeMode==="flex");
+    modal.querySelector("#fixedBox").style.display = timeMode==="fixed"?"":"none";
+    modal.querySelector("#flexBox").style.display = timeMode==="flex"?"":"none";
+  }));
+}
+function saveCourse(){
+  const g=id=>modal.querySelector(id);
+  const obj={ child:g("#f_child").value, title:(g("#f_title").value||"").trim()||"未命名課程",
+    day:g("#f_day").value, teacherId:g("#f_teacher").value, status:g("#f_status").value, goal:(g("#f_goal").value||"").trim() };
+  if(timeMode==="fixed"){
+    const s=g("#f_start").value, e=g("#f_end").value;
+    obj.start=s||""; obj.end=e||(s?s:"");
+    if(s && e && toMin(e)<=toMin(s)){ toast("結束時間要晚於開始時間"); return; }
+    delete obj.timeNote;
+    if(!s) delete obj.start;
+  } else {
+    obj.timeNote=(g("#f_note").value||"").trim()||"時間未定"; delete obj.start; delete obj.end;
+  }
+  if(editIndex===null) courses.push(obj); else courses[editIndex]=obj;
+  saveData(); closeModal(); renderAll();
+  toast(editIndex===null?"已新增課程":"已更新課程");
+}
+function deleteCourse(){
+  if(editIndex===null) return;
+  courses.splice(editIndex,1); saveData(); closeModal(); renderAll(); toast("已刪除課程");
+}
+
+/* 老師管理 */
+function openTeacherModal(){
+  const rows = teachers.map((t,i)=>`
+    <div class="trow" data-trow="${i}">
+      <div class="tinputs">
+        <input data-tname="${i}" value="${t.name.replace(/"/g,'&quot;')}" placeholder="老師名稱">
+        <input data-tline="${i}" value="${(t.line||"").replace(/"/g,'&quot;')}" placeholder="LINE 連結 https://line.me/ti/p/～">
+        <input data-tnote="${i}" value="${(t.note||"").replace(/"/g,'&quot;')}" placeholder="備註（選填）">
+      </div>
+      <button class="rm" data-trm="${i}">刪</button>
+    </div>`).join("");
+  openModal(`
+    <h2>管理老師</h2>
+    <div id="trows">${rows}</div>
+    <button class="tbtn" data-taddrow style="margin-bottom:6px;">＋ 新增老師</button>
+    <p class="field hint" style="margin-top:4px;">LINE 連結取得方式：打開跟老師的對話 → 點大頭貼 → 分享 → 複製連結，貼到上面即可。貼好後「打開 LINE」「請假」就會直接開那位老師的對話。</p>
+    <div class="modal-acts">
+      <button class="btn btn-cancel" data-close>取消</button>
+      <button class="btn btn-save" data-saveteachers>儲存</button>
+    </div>`);
+}
+function addTeacherRow(){
+  const wrap=modal.querySelector("#trows");
+  const i=wrap.querySelectorAll(".trow").length;
+  const div=document.createElement("div");
+  div.className="trow"; div.dataset.trow=i;
+  div.innerHTML=`<div class="tinputs">
+      <input data-tname="${i}" value="" placeholder="老師名稱">
+      <input data-tline="${i}" value="" placeholder="LINE 連結 https://line.me/ti/p/～">
+      <input data-tnote="${i}" value="" placeholder="備註（選填）">
+    </div><button class="rm" data-trm="${i}">刪</button>`;
+  wrap.appendChild(div);
+}
+function saveTeachers(){
+  const rows=[...modal.querySelectorAll(".trow")];
+  const newList=[];
+  rows.forEach(r=>{
+    const idx=r.dataset.trow;
+    const name=(r.querySelector(`[data-tname="${idx}"]`).value||"").trim();
+    if(!name) return;
+    const line=(r.querySelector(`[data-tline="${idx}"]`).value||"").trim();
+    const note=(r.querySelector(`[data-tnote="${idx}"]`).value||"").trim();
+    const existing=teachers[idx];
+    newList.push({ id:existing?existing.id:uid(), name, line, note });
+  });
+  if(!newList.length){ toast("至少要留一位老師"); return; }
+  teachers=newList; saveData(); closeModal(); renderAll(); toast("已更新老師資料");
+}
+
+/* 匯出 / 匯入 / 還原 */
+function exportData(){
+  copyText(JSON.stringify({teachers,courses},null,2)).then(()=>toast("✅ 設定已複製，貼到記事本即可備份"));
+}
+function openImport(){
+  openModal(`<h2>匯入設定</h2>
+    <div class="field"><label>貼上備份的 JSON</label><textarea id="impText" rows="8" placeholder='{"teachers":[...],"courses":[...]}'></textarea></div>
+    <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-doimport>匯入</button></div>`);
+}
+function doImport(){
+  try{
+    const d=JSON.parse(modal.querySelector("#impText").value);
+    if(!d.teachers||!d.courses) throw 0;
+    teachers=d.teachers; courses=d.courses; saveData(); closeModal(); renderAll(); toast("✅ 已匯入");
+  }catch(e){ toast("格式不對，請貼完整的 JSON"); }
+}
+function resetData(){
+  openModal(`<h2>還原成預設？</h2><p class="field hint">會清掉目前的修改，回到一開始的範例課表。建議先「匯出備份」。</p>
+    <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" data-doreset>還原</button></div>`);
+}
+function doReset(){
+  teachers=JSON.parse(JSON.stringify(DEFAULT_DATA.teachers));
+  courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses));
+  saveData(); closeModal(); renderAll(); toast("已還原預設");
+}
+
+/* toast */
+let tt; function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove("show"),3000); }
+
+/* ---------- 事件委派 ---------- */
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-edit],[data-leave],[data-add],[data-teachers],[data-export],[data-import],[data-reset],[data-savecourse],[data-delcourse],[data-saveteachers],[data-taddrow],[data-trm],[data-close],[data-doimport],[data-doreset]");
+  if(!el) return;
+  if(el.dataset.edit!==undefined && el.tagName!=="A"){ openCourseModal(Number(el.dataset.edit)); }
+  else if(el.dataset.leave!==undefined){ doLeave(Number(el.dataset.leave)); }
+  else if(el.dataset.add!==undefined){ openCourseModal(null); }
+  else if(el.dataset.teachers!==undefined){ openTeacherModal(); }
+  else if(el.dataset.export!==undefined){ exportData(); }
+  else if(el.dataset.import!==undefined){ openImport(); }
+  else if(el.dataset.reset!==undefined){ resetData(); }
+  else if(el.dataset.savecourse!==undefined){ saveCourse(); }
+  else if(el.dataset.delcourse!==undefined){ deleteCourse(); }
+  else if(el.dataset.saveteachers!==undefined){ saveTeachers(); }
+  else if(el.dataset.taddrow!==undefined){ addTeacherRow(); }
+  else if(el.dataset.trm!==undefined){ const r=el.closest(".trow"); if(r) r.remove(); }
+  else if(el.dataset.close!==undefined){ closeModal(); }
+  else if(el.dataset.doimport!==undefined){ doImport(); }
+  else if(el.dataset.doreset!==undefined){ doReset(); }
 });
+mqMobile.addEventListener("change",renderCalendar);
+
+/* ---------- init ---------- */
+document.getElementById("todayLine").textContent =
+  `📅 今天 ${now.getMonth()+1}/${now.getDate()} ${["週日","週一","週二","週三","週四","週五","週六"][now.getDay()]}`;
+initData();
+renderAll();
 </script>
 </body>
 </html>
