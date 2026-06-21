@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Alyssa & Evelyn 的暑假課表</title>
+<title>Alyssa & Evelyn 的每日課表</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -185,8 +185,8 @@
 </head>
 <body>
   <header class="hero">
-    <p class="eyebrow">SUMMER 2026</p>
-    <h1>Alyssa &amp; Evelyn 的暑假課表</h1>
+    <p class="eyebrow">DAILY SCHEDULE</p>
+    <h1>Alyssa &amp; Evelyn 的每日課表</h1>
     <div class="who-key"><span><i class="dot" style="background:#E2674A"></i>Alyssa</span><span><i class="dot" style="background:#2A9D8F"></i>Evelyn</span></div>
     <div class="today-line" id="todayLine">載入中…</div>
   </header>
@@ -196,7 +196,6 @@
 
     <div class="toolbar">
       <button class="tbtn primary" data-add>＋ 新增課程</button>
-      <button class="tbtn" data-teachers>📇 管理老師</button>
       <button class="tbtn" data-export>⬇ 匯出備份</button>
       <button class="tbtn" data-import>⬆ 匯入</button>
       <button class="tbtn" data-reset>↺ 還原預設</button>
@@ -220,7 +219,7 @@
         <b>請假（不用先設定 LINE 連結）</b>：點課程 → 按「用 LINE 請假」。一按請假，那堂課就會在課表上標「請假」並畫線，按錯可在詳情「取消標記」。送出方式依裝置不同：<br>
         ・<b>手機</b>：會打開 LINE 並讓你選老師，訊息(含日期時間)已帶好，點老師→送出。<br>
         ・<b>電腦</b>：會把訊息<b>複製</b>好，請貼到 LINE 電腦版老師的對話送出（電腦瀏覽器無法自動跳進 LINE，這是 LINE 的限制）。<br>
-        ・想<b>一鍵直接開某位老師的對話</b>：到「管理老師」填那位老師的 LINE 連結，之後按請假就會直接開他的對話，訊息已複製、貼上即可。（LINE 不允許把文字自動塞進別人對話，所以一定要貼一下。）<br>
+        ・想<b>一鍵直接開某位老師的對話</b>：編輯那堂課，填那位老師的 LINE 連結，之後按請假就會直接開他的對話，訊息已複製、貼上即可。（LINE 不允許把文字自動塞進別人對話，所以一定要貼一下。）<br>
         ・老師若有 Email，填了可用「Email 請假」，直接開好信、主旨內文都填好，按寄出最省事。<br><br>
         <b>註記</b>：詳情視窗可幫每堂課寫一句註記（如「改線上」），課表上會出現 📝。<br><br>
         <b>臨時加課</b>：按「＋ 新增課程」或在月曆點某天「＋ 新增單次課程」，最上面可「沿用已建立的課程」一鍵帶入名稱/老師/時間，再自由選「每週固定」或「單次／指定日期」。<br><br>
@@ -229,7 +228,7 @@
       </div>
     </details>
 
-    <p class="foot">為 Alyssa 和 Evelyn 做的暑假課表 · 放在 GitHub Pages，手機開最順手 🌴</p>
+    <p class="foot">為 Alyssa 和 Evelyn 做的每日課表 · 放在 GitHub Pages，手機開最順手 🌴</p>
   </main>
 
   <div class="backdrop" id="backdrop"><div class="modal" id="modal"></div></div>
@@ -237,30 +236,34 @@
 
 <script>
 const DEFAULT_DATA = {
-  teachers: [],
   courses: [
-    { child:"Alyssa", title:"獵豹 video + mindmap 筆記", recur:"weekly", day:"週一", start:"10:00", end:"11:00", teacherId:"", goal:"看完影片做 mindmap 整理" },
-    { child:"Alyssa", title:"程式語言（線上）",          recur:"weekly", day:"週二", start:"19:30", end:"20:30", teacherId:"", goal:"暑假線上課先試這門" },
-    { child:"Alyssa", title:"游泳：轉身／跳水／蝶腳",     recur:"weekly", day:"週三", start:"15:00", end:"16:00", teacherId:"", goal:"轉身、跳水、蝶腳訓練" },
-    { child:"Alyssa", title:"小提琴 or 大提琴",          recur:"weekly", day:"週四", timeNote:"樂器確定後再排", teacherId:"", goal:"先決定學哪一種" },
-    { child:"Alyssa", title:"跟爸爸學籃球運球",          recur:"weekly", day:"週五", timeNote:"晚餐後 20 分鐘", teacherId:"", goal:"建立球感" },
-    { child:"Alyssa", title:"極光看滑冰",                recur:"weekly", day:"週末", timeNote:"有空再去",       teacherId:"", goal:"彈性活動" },
-    { child:"Evelyn", title:"音樂啟蒙", recur:"weekly", day:"週二", timeNote:"時間未定", teacherId:"", goal:"以興趣為主" },
-    { child:"Evelyn", title:"游泳基礎", recur:"weekly", day:"週四", timeNote:"時間未定", teacherId:"", goal:"建立水性" },
+    { child:"Alyssa", title:"獵豹 video + mindmap 筆記", recur:"weekly", day:"週一", start:"10:00", end:"11:00", tname:"", line:"", email:"", fb:"", goal:"看完影片做 mindmap 整理" },
+    { child:"Alyssa", title:"程式語言（線上）",          recur:"weekly", day:"週二", start:"19:30", end:"20:30", tname:"", line:"", email:"", fb:"", goal:"暑假線上課先試這門" },
+    { child:"Alyssa", title:"游泳：轉身／跳水／蝶腳",     recur:"weekly", day:"週三", start:"15:00", end:"16:00", tname:"", line:"", email:"", fb:"", goal:"轉身、跳水、蝶腳訓練" },
+    { child:"Alyssa", title:"小提琴 or 大提琴",          recur:"weekly", day:"週四", timeNote:"樂器確定後再排", tname:"", line:"", email:"", fb:"", goal:"先決定學哪一種" },
+    { child:"Alyssa", title:"跟爸爸學籃球運球",          recur:"weekly", day:"週五", timeNote:"晚餐後 20 分鐘", tname:"爸爸", line:"", email:"", fb:"", goal:"建立球感" },
+    { child:"Alyssa", title:"極光看滑冰",                recur:"weekly", day:"週末", timeNote:"有空再去",       tname:"", line:"", email:"", fb:"", goal:"彈性活動" },
+    { child:"Evelyn", title:"音樂啟蒙", recur:"weekly", day:"週二", timeNote:"時間未定", tname:"", line:"", email:"", fb:"", goal:"以興趣為主" },
+    { child:"Evelyn", title:"游泳基礎", recur:"weekly", day:"週四", timeNote:"時間未定", tname:"", line:"", email:"", fb:"", goal:"建立水性" },
   ]
 };
 
 const STORE_KEY="alyssa-evelyn-schedule-v5";
-let teachers=[], courses=[], marks={};
+let courses=[], marks={};
 let viewMode="week", cursor=new Date();
 let detailI=null, detailDs=null;
 
 function loadData(){ try{ const raw=localStorage.getItem(STORE_KEY); if(raw) return JSON.parse(raw); }catch(e){} return null; }
-function saveData(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({teachers,courses,marks})); }catch(e){} }
-const uid=()=>"t_"+Math.random().toString(36).slice(2,8);
+function saveData(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks})); }catch(e){} }
 const cuid=()=>"c_"+Math.random().toString(36).slice(2,8);
 function ensureCids(){ courses.forEach(c=>{ if(!c.cid) c.cid=cuid(); }); }
-function initData(){ const d=loadData(); if(d&&d.courses&&d.teachers){teachers=d.teachers;courses=d.courses;marks=d.marks||{};} else {teachers=[];courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses));marks={};} ensureCids(); }
+function migrateTeachers(d){
+  // 舊版老師清單(teachers + teacherId) → 轉成每堂課自己帶聯絡方式
+  if(d.teachers&&d.teachers.length){ const by={}; d.teachers.forEach(t=>by[t.id]=t);
+    (d.courses||[]).forEach(c=>{ if(c.teacherId&&by[c.teacherId]){ const t=by[c.teacherId]; c.tname=c.tname||t.name||""; c.line=c.line||t.line||""; c.email=c.email||t.email||""; c.fb=c.fb||t.fb||""; } delete c.teacherId; });
+  }
+}
+function initData(){ const d=loadData(); if(d&&d.courses){ migrateTeachers(d); courses=d.courses; marks=d.marks||{}; } else { courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; } ensureCids(); }
 
 /* ---------- 工具 ---------- */
 const DAYS=["週一","週二","週三","週四","週五","週六","週日"];
@@ -274,8 +277,8 @@ const pad=n=>String(n).padStart(2,"0");
 const toMin=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
 const fmtHM=min=>{min=Math.max(0,Math.min(min,23*60+45));return pad(Math.floor(min/60))+":"+pad(min%60);};
 const childClass=c=>c.child==="Alyssa"?"alyssa":"sister";
-const teacherById=id=>teachers.find(t=>t.id===id);
-const teacherName=c=>{const t=teacherById(c.teacherId);return t?t.name:"未指定老師";};
+const teacherName=c=>c.tname?c.tname:"未指定老師";
+function teacherNames(){ return [...new Set(courses.map(c=>(c.tname||"").trim()).filter(Boolean))]; }
 const esc=s=>(s||"").replace(/"/g,"&quot;");
 function displayTime(c){ if(c.start) return c.end?`${c.start}–${c.end}`:c.start; if(c.timeNote) return c.timeNote; return "時間未定"; }
 const sortKey=c=>c.start?toMin(c.start):99999;
@@ -433,23 +436,28 @@ function renderCourseList(){
   }).join("")+`</div>`;
 }
 
-/* ---------- 老師 ---------- */
-function lineUrl(t){ if(!t||!t.line) return ""; const v=t.line.trim(); return /^https?:\/\//i.test(v)?v:("https://line.me/ti/p/~"+v.replace(/^~/,"")); }
-function mailUrl(t,subject,body){ if(!t||!t.email) return ""; const q=[]; if(subject)q.push("subject="+encodeURIComponent(subject)); if(body)q.push("body="+encodeURIComponent(body)); return "mailto:"+encodeURIComponent(t.email.trim())+(q.length?"?"+q.join("&"):""); }
-function fbUrl(t){ if(!t||!t.fb) return ""; const v=t.fb.trim(); return /^https?:\/\//i.test(v)?v:("https://m.me/"+v.replace(/^@/,"")); }
-function contactBtns(t){ let h=""; if(t.line)h+=`<a class="btn btn-line" href="${lineUrl(t)}" target="_blank" rel="noopener">打開 LINE</a>`; if(t.email)h+=`<a class="btn btn-email" href="${mailUrl(t)}">Email</a>`; if(t.fb)h+=`<a class="btn btn-fb" href="${fbUrl(t)}" target="_blank" rel="noopener">FB</a>`; return h; }
+/* ---------- 老師（聯絡方式直接放在課程上）---------- */
+function lineUrl(c){ if(!c||!c.line) return ""; const v=c.line.trim(); return /^https?:\/\//i.test(v)?v:("https://line.me/ti/p/~"+v.replace(/^~/,"")); }
+function mailUrl(c,subject,body){ if(!c||!c.email) return ""; const q=[]; if(subject)q.push("subject="+encodeURIComponent(subject)); if(body)q.push("body="+encodeURIComponent(body)); return "mailto:"+encodeURIComponent(c.email.trim())+(q.length?"?"+q.join("&"):""); }
+function fbUrl(c){ if(!c||!c.fb) return ""; const v=c.fb.trim(); return /^https?:\/\//i.test(v)?v:("https://m.me/"+v.replace(/^@/,"")); }
+function contactBtns(c){ let h=""; if(c.line)h+=`<a class="btn btn-line" href="${lineUrl(c)}" target="_blank" rel="noopener">打開 LINE</a>`; if(c.email)h+=`<a class="btn btn-email" href="${mailUrl(c)}">Email</a>`; if(c.fb)h+=`<a class="btn btn-fb" href="${fbUrl(c)}" target="_blank" rel="noopener">FB</a>`; return h; }
 function renderTeachers(){
   const box=document.getElementById("teachers");
-  if(!teachers.length){ box.innerHTML=`<div class="empty-teachers">還沒有老師。按上方「📇 管理老師」新增。注意：請假不需要先設定老師，會用 LINE 分享讓你直接選人；老師資料是給「打開 LINE 討論／Email／FB」用的。</div>`; return; }
-  box.innerHTML=teachers.map(t=>{ const c=contactBtns(t)||`<span class="btn off">未設定聯絡方式</span>`;
-    return `<div class="tcard"><h3>${t.name}</h3><div class="note">${t.note||""}</div><div class="btns">${c}<button class="btn btn-edit" data-teachers>編輯</button></div></div>`; }).join("");
+  // 依老師名字把課程歸類；聯絡方式取該老師任一堂課填過的
+  const map={};
+  courses.forEach((c,i)=>{ const n=(c.tname||"").trim(); if(!n) return; if(!map[n]) map[n]={name:n,line:"",email:"",fb:"",courses:[]}; const g=map[n]; if(c.line&&!g.line)g.line=c.line; if(c.email&&!g.email)g.email=c.email; if(c.fb&&!g.fb)g.fb=c.fb; g.courses.push({title:c.title,i}); });
+  const names=Object.keys(map);
+  if(!names.length){ box.innerHTML=`<div class="empty-teachers">老師資料直接寫在「課程」裡：編輯任一堂課，填上老師名字與 LINE／Email／FB 即可，這裡就會自動依老師整理出來。請假本身不需要先設定老師。</div>`; return; }
+  box.innerHTML=names.map(n=>{ const g=map[n], c=contactBtns(g)||`<span class="btn off">未填聯絡方式</span>`;
+    const cs=g.courses.map(x=>x.title).join("、");
+    return `<div class="tcard"><h3>${g.name}</h3><div class="note">負責：${cs}</div><div class="btns">${c}<button class="btn btn-edit" data-edit="${g.courses[0].i}">編輯課程</button></div></div>`; }).join("");
 }
 
 function renderAll(){ renderToday(); renderCalendar(); renderCourseList(); renderTeachers(); }
 
 /* ---------- 請假 ---------- */
-function leaveMsg(c,t,ds){
-  const tname=t?t.name:"老師", d=parseYmd(ds);
+function leaveMsg(c,ds){
+  const tname=c.tname?c.tname:"老師", d=parseYmd(ds);
   const when=`${d.getMonth()+1}/${d.getDate()}（${WEEK_CH[isoOf(d)]}）`;
   const timeStr=c.start?`${c.start}–${c.end} `:"";
   return `${tname}您好，我是 ${c.child} 的家長。\n${c.child} ${when} ${timeStr}的「${c.title}」想請假一次，\n不好意思，麻煩老師了，謝謝！🙏`;
@@ -460,24 +468,21 @@ function launchLine(url){
   else window.open(url,"_blank");
 }
 function doLeave(i,ds,channel){
-  const c=courses[i],t=teacherById(c.teacherId),msg=leaveMsg(c,t,ds);
+  const c=courses[i],msg=leaveMsg(c,ds);
   setLeave(c,ds,true);
-  if(channel==="email"&&t&&t.email){
-    window.open(mailUrl(t,`請假通知 - ${c.child} ${c.title}`,msg),"_blank");
+  if(channel==="email"&&c.email){
+    window.open(mailUrl(c,`請假通知 - ${c.child} ${c.title}`,msg),"_blank");
     toast("✅ 已標記請假並開啟 Email，內容已填好，按寄出即可");
   } else {
     copyText(msg).then(()=>{
-      const id=t?extractLineId(t.line):"";
-      if(t&&t.line){
-        // 有存老師連結 → 直接開那位老師的對話（電腦優先用 App scheme）
-        if(!isMobile && id) launchLine("line://ti/p/~"+id); else window.open(lineUrl(t),"_blank");
-        toast(`✅ 已標記＋複製訊息，已開啟 ${t.name} 的 LINE 對話，按 ${pasteKey} 貼上再送出`);
+      const id=extractLineId(c.line);
+      if(c.line){
+        if(!isMobile && id) launchLine("line://ti/p/~"+id); else window.open(lineUrl(c),"_blank");
+        toast(`✅ 已標記＋複製訊息，已開啟 ${teacherName(c)} 的 LINE 對話，按 ${pasteKey} 貼上再送出`);
       } else if(isMobile){
-        // 手機 → LINE 分享，選老師、訊息已帶好
         window.open("https://line.me/R/share?text="+encodeURIComponent(msg),"_blank");
         toast("✅ 已標記請假，LINE 開啟後選老師按送出即可");
       } else {
-        // 電腦沒存連結 → 喚起 LINE App 的分享畫面（訊息已複製為後備）
         launchLine("line://msg/text/"+encodeURIComponent(msg));
         toast(`✅ 已標記＋複製訊息，正在喚起 LINE（若跳出「在 LINE 中開啟」請按允許）；選老師後按 ${pasteKey} 貼上送出`);
       }
@@ -506,16 +511,16 @@ function openDayModal(s){
 
 function openCourseDetail(i,ds){
   detailI=i; detailDs=ds;
-  const c=courses[i], t=teacherById(c.teacherId), m=getMark(c,ds)||{}, d=parseYmd(ds);
+  const c=courses[i], m=getMark(c,ds)||{}, d=parseYmd(ds);
   const when=c.recur==="once"?`${d.getMonth()+1}/${d.getDate()}（${WEEK_CH[isoOf(d)]}）單次`:`每週 ${c.day||""} · 本次 ${d.getMonth()+1}/${d.getDate()}`;
-  const emailBtn=t&&t.email?`<button class="btn leave-big" style="background:var(--email)" data-leave="${i}" data-ds="${ds}" data-channel="email">✉️ 用 Email 請假（最自動）</button>`:"";
-  const lineHint = t&&t.line
-      ? `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">按下會開啟 ${teacherName(c)} 的 LINE 對話，訊息已複製，貼上送出即可。</p>`
+  const emailBtn=c.email?`<button class="btn leave-big" style="background:var(--email)" data-leave="${i}" data-ds="${ds}" data-channel="email">✉️ 用 Email 請假（最自動）</button>`:"";
+  const lineHint = c.line
+      ? `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">按下會開啟 ${teacherName(c)} 的 LINE 對話，訊息已複製，按 ${pasteKey} 貼上送出。</p>`
       : (isMobile
           ? `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">按下會開 LINE 讓你選老師，訊息已帶好。</p>`
-          : `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">電腦版：按下會喚起 LINE App 並複製訊息（LINE 無法自動填入別人對話，貼一下即可）。想直接開某老師對話，可在「管理老師」填他的 LINE 連結。</p>`);
+          : `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">電腦版：按下會喚起 LINE（訊息已複製）。想直接開這位老師的對話，請在「編輯課程」填他的 LINE 連結。</p>`);
   const status=m.leave?`<div class="leave-status">✅ 已標記請假（${d.getMonth()+1}/${d.getDate()}）<button class="linkbtn" data-togglemark>取消標記</button></div>`:"";
-  const contacts=t?contactBtns(t):"";
+  const contacts=contactBtns(c);
   openModal(`
     <h2>${c.title}</h2>
     <p class="detail-meta">${c.child} · ${when} · ${displayTime(c)}</p>
@@ -525,7 +530,7 @@ function openCourseDetail(i,ds){
     <div class="field" style="margin-top:10px"><label>這堂課的註記（會在課表顯示 📝）</label><textarea id="f_occnote" rows="2" placeholder="例如：改線上 / 老師說帶課本">${esc(m.note||"")}</textarea></div>
     <button class="btn btn-edit" data-savenote style="width:100%;justify-content:center;margin-bottom:2px">儲存註記</button>
     <div class="contact-label">聯絡老師討論</div>
-    <div class="contact-row">${contacts||`<span class="btn off" style="flex:1;justify-content:center">尚未設定，可到「管理老師」新增</span>`}</div>
+    <div class="contact-row">${contacts||`<span class="btn off" style="flex:1;justify-content:center">這堂課還沒填老師聯絡方式（編輯課程可填）</span>`}</div>
     <div class="modal-acts"><button class="btn btn-edit" data-edit="${i}">編輯課程</button><button class="btn btn-del" data-deldirect="${i}">刪除</button><button class="btn btn-cancel" data-close>關閉</button></div>`);
 }
 
@@ -534,19 +539,19 @@ function applyTimeSeg(){ modal.querySelector("#seg_fixed").classList.toggle("on"
 function openCourseModal(i,prefill){
   editIndex=(i==null)?null:i;
   let c;
-  if(editIndex===null){ c={child:"Alyssa",title:"",recur:"weekly",day:"週一",date:ymd(cursor||now),start:"",end:"",timeNote:"",teacherId:"",goal:"",paused:false}; if(prefill) c=Object.assign(c,prefill); }
+  if(editIndex===null){ c={child:"Alyssa",title:"",recur:"weekly",day:"週一",date:ymd(cursor||now),start:"",end:"",timeNote:"",tname:"",line:"",email:"",fb:"",goal:"",paused:false}; if(prefill) c=Object.assign(c,prefill); }
   else c=Object.assign({recur:"weekly",day:"週一",date:ymd(now)},courses[editIndex]);
   recurMode=c.recur==="once"?"once":"weekly";
   timeMode=c.start?"fixed":(c.timeNote?"flex":"fixed");
   const kids=[...new Set(courses.map(x=>x.child))]; ["Alyssa","Evelyn"].forEach(n=>{if(!kids.includes(n))kids.push(n);});
   const kidOpts=kids.map(k=>`<option ${c.child===k?"selected":""}>${k}</option>`).join("");
   const dayOpts=[...DAYS,"週末"].map(x=>`<option ${c.day===x?"selected":""}>${x}</option>`).join("");
-  const teaOpts=`<option value="" ${!c.teacherId?"selected":""}>（未指定）</option>`+teachers.map(t=>`<option value="${t.id}" ${c.teacherId===t.id?"selected":""}>${t.name}</option>`).join("");
+  const nameList=teacherNames();
   const tmpl=editIndex===null?`<div class="field"><label>快速帶入現有課程（臨時加課好用）</label><select id="f_template"><option value="">— 沿用已建立的課程 —</option>${courses.map((x,xi)=>`<option value="${xi}">${x.child}・${x.title}</option>`).join("")}</select></div>`:"";
   openModal(`
     <h2>${editIndex===null?"新增課程":"編輯課程"}</h2>
     ${tmpl}
-    <div class="row2"><div class="field"><label>孩子</label><select id="f_child">${kidOpts}</select></div><div class="field"><label>老師</label><select id="f_teacher">${teaOpts}</select></div></div>
+    <div class="row2"><div class="field"><label>孩子</label><select id="f_child">${kidOpts}</select></div><div class="field"><label>老師名稱</label><input id="f_tname" list="tnameList" value="${esc(c.tname)}" placeholder="例如：游泳教練"><datalist id="tnameList">${nameList.map(n=>`<option value="${esc(n)}"></option>`).join("")}</datalist></div></div>
     <div class="field"><label>課程名稱</label><input id="f_title" value="${esc(c.title)}" placeholder="例如：游泳訓練"></div>
     <div class="field"><label>排課方式</label><div class="seg"><button id="seg_weekly" class="${recurMode==="weekly"?"on":""}" data-recur="weekly">每週固定</button><button id="seg_once" class="${recurMode==="once"?"on":""}" data-recur="once">單次／指定日期</button></div></div>
     <div id="dayBox" class="field" style="${recurMode==="weekly"?"":"display:none"}"><label>星期</label><select id="f_day">${dayOpts}</select></div>
@@ -555,19 +560,28 @@ function openCourseModal(i,prefill){
     <div id="fixedBox" class="row2" style="${timeMode==="fixed"?"":"display:none"}"><div class="field"><label>開始</label><input id="f_start" type="time" value="${c.start||""}"></div><div class="field"><label>結束</label><input id="f_end" type="time" value="${c.end||""}"></div></div>
     <div id="flexBox" class="field" style="${timeMode==="flex"?"":"display:none"}"><label>時間說明</label><input id="f_note" value="${esc(c.timeNote)}" placeholder="例如：晚餐後 20 分鐘 / 有空再去"></div>
     <div class="field"><label>目標／備註</label><input id="f_goal" value="${esc(c.goal)}" placeholder="這堂課的重點"></div>
+    <div class="field"><label>老師聯絡方式（選填，請假會用到）</label>
+      <input id="f_line" value="${esc(c.line)}" placeholder="LINE 連結或 ID" style="margin-bottom:6px">
+      <div class="row2"><div class="field" style="margin-bottom:0"><input id="f_email" value="${esc(c.email)}" placeholder="Email"></div><div class="field" style="margin-bottom:0"><input id="f_fb" value="${esc(c.fb)}" placeholder="FB/Messenger"></div></div>
+      <div class="hint">同一位老師打過名字後，下次在「老師名稱」選他就會自動帶出聯絡方式。</div>
+    </div>
     <label class="checkrow"><input type="checkbox" id="f_paused" ${c.paused?"checked":""}> 暫緩（先隱藏，不顯示在課表）</label>
     <div class="modal-acts">${editIndex===null?"":`<button class="btn btn-del" data-deldirect="${editIndex}">刪除</button>`}<button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-savecourse>儲存</button></div>`);
   modal.querySelectorAll("[data-recur]").forEach(b=>b.addEventListener("click",()=>{ recurMode=b.dataset.recur; modal.querySelector("#seg_weekly").classList.toggle("on",recurMode==="weekly"); modal.querySelector("#seg_once").classList.toggle("on",recurMode==="once"); modal.querySelector("#dayBox").style.display=recurMode==="weekly"?"":"none"; modal.querySelector("#dateBox").style.display=recurMode==="once"?"":"none"; }));
   modal.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{ timeMode=b.dataset.mode; applyTimeSeg(); }));
   const tsel=modal.querySelector("#f_template");
   if(tsel) tsel.addEventListener("change",()=>{ const x=courses[+tsel.value]; if(!x) return;
-    modal.querySelector("#f_child").value=x.child; modal.querySelector("#f_title").value=x.title; modal.querySelector("#f_teacher").value=x.teacherId||""; modal.querySelector("#f_goal").value=x.goal||"";
+    modal.querySelector("#f_child").value=x.child; modal.querySelector("#f_title").value=x.title; modal.querySelector("#f_goal").value=x.goal||"";
+    modal.querySelector("#f_tname").value=x.tname||""; modal.querySelector("#f_line").value=x.line||""; modal.querySelector("#f_email").value=x.email||""; modal.querySelector("#f_fb").value=x.fb||"";
     if(x.start){ timeMode="fixed"; modal.querySelector("#f_start").value=x.start; modal.querySelector("#f_end").value=x.end||""; } else { timeMode="flex"; modal.querySelector("#f_note").value=x.timeNote||""; }
     applyTimeSeg(); toast("已帶入「"+x.title+"」，再選排課方式即可"); });
+  const tnameInput=modal.querySelector("#f_tname");
+  if(tnameInput) tnameInput.addEventListener("change",()=>{ const n=tnameInput.value.trim(); if(!n) return; const src=courses.find(x=>x.tname===n&&(x.line||x.email||x.fb)); if(!src) return;
+    const L=modal.querySelector("#f_line"),E=modal.querySelector("#f_email"),F=modal.querySelector("#f_fb"); if(!L.value)L.value=src.line||""; if(!E.value)E.value=src.email||""; if(!F.value)F.value=src.fb||""; });
 }
 function saveCourse(){
   const g=id=>modal.querySelector(id);
-  const obj={ cid:editIndex===null?cuid():(courses[editIndex].cid||cuid()), child:g("#f_child").value, title:(g("#f_title").value||"").trim()||"未命名課程", teacherId:g("#f_teacher").value, goal:(g("#f_goal").value||"").trim(), paused:g("#f_paused").checked };
+  const obj={ cid:editIndex===null?cuid():(courses[editIndex].cid||cuid()), child:g("#f_child").value, title:(g("#f_title").value||"").trim()||"未命名課程", tname:(g("#f_tname").value||"").trim(), line:(g("#f_line").value||"").trim(), email:(g("#f_email").value||"").trim(), fb:(g("#f_fb").value||"").trim(), goal:(g("#f_goal").value||"").trim(), paused:g("#f_paused").checked };
   if(recurMode==="once"){ obj.recur="once"; obj.date=g("#f_date").value||ymd(now); } else { obj.recur="weekly"; obj.day=g("#f_day").value; }
   if(timeMode==="fixed"){ const s=g("#f_start").value,e=g("#f_end").value; if(s&&e&&toMin(e)<=toMin(s)){toast("結束時間要晚於開始時間");return;} if(s){obj.start=s;obj.end=e||s;} } else { obj.timeNote=(g("#f_note").value||"").trim()||"時間未定"; }
   if(editIndex===null) courses.push(obj); else courses[editIndex]=obj;
@@ -575,38 +589,11 @@ function saveCourse(){
 }
 function deleteCourseDirect(i){ const cid=courses[i].cid; courses.splice(i,1); Object.keys(marks).forEach(k=>{if(k.startsWith(cid+"__"))delete marks[k];}); saveData(); closeModal(); renderAll(); toast("已刪除課程"); }
 
-function openTeacherModal(){
-  const rows=teachers.map((t,i)=>`<div class="trow" data-trow="${i}"><div class="tinputs">
-    <input data-tname="${i}" value="${esc(t.name)}" placeholder="老師名稱">
-    <input data-temail="${i}" value="${esc(t.email)}" placeholder="Email（選填，請假可一鍵寄信）">
-    <input data-tline="${i}" value="${esc(t.line)}" placeholder="LINE 連結或 ID（選填，用於打開對話）">
-    <input data-tfb="${i}" value="${esc(t.fb)}" placeholder="FB / Messenger（選填）">
-    <input data-tnote="${i}" value="${esc(t.note)}" placeholder="備註（選填）">
-  </div><button class="rm" data-trm="${i}">刪</button></div>`).join("");
-  openModal(`<h2>管理老師</h2><div id="trows">${rows}</div>
-    <button class="tbtn" data-taddrow style="margin-bottom:6px;">＋ 新增老師</button>
-    <p class="field hint" style="margin-top:4px;">請假不用先設定老師（會用 LINE 分享讓你選人）。這裡填 Email 可一鍵寄請假信；LINE 連結／FB 是給「打開對話討論」用的，沒填也沒關係。</p>
-    <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-saveteachers>儲存</button></div>`);
-}
-function addTeacherRow(){
-  const wrap=modal.querySelector("#trows"), i=wrap.querySelectorAll(".trow").length;
-  const div=document.createElement("div"); div.className="trow"; div.dataset.trow=i;
-  div.innerHTML=`<div class="tinputs"><input data-tname="${i}" placeholder="老師名稱"><input data-temail="${i}" placeholder="Email（選填）"><input data-tline="${i}" placeholder="LINE 連結或 ID（選填）"><input data-tfb="${i}" placeholder="FB / Messenger（選填）"><input data-tnote="${i}" placeholder="備註（選填）"></div><button class="rm" data-trm="${i}">刪</button>`;
-  wrap.appendChild(div);
-}
-function saveTeachers(){
-  const rows=[...modal.querySelectorAll(".trow")], list=[];
-  rows.forEach(r=>{ const idx=r.dataset.trow, name=(r.querySelector(`[data-tname="${idx}"]`).value||"").trim(); if(!name) return;
-    const get=k=>(r.querySelector(`[data-${k}="${idx}"]`).value||"").trim(), ex=teachers[idx];
-    list.push({ id:ex?ex.id:uid(), name, email:get("temail"), line:get("tline"), fb:get("tfb"), note:get("tnote") }); });
-  teachers=list; saveData(); closeModal(); renderAll(); toast("已更新老師資料");
-}
-
-function exportData(){ copyText(JSON.stringify({teachers,courses,marks},null,2)).then(()=>toast("✅ 設定已複製，貼到記事本即可備份")); }
+function exportData(){ copyText(JSON.stringify({courses,marks},null,2)).then(()=>toast("✅ 設定已複製，貼到記事本即可備份")); }
 function openImport(){ openModal(`<h2>匯入設定</h2><div class="field"><label>貼上備份的 JSON</label><textarea id="impText" rows="8" placeholder='{"teachers":[...],"courses":[...]}'></textarea></div><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-doimport>匯入</button></div>`); }
-function doImport(){ try{ const d=JSON.parse(modal.querySelector("#impText").value); if(!d.courses)throw 0; teachers=d.teachers||[]; courses=d.courses; marks=d.marks||{}; ensureCids(); saveData(); closeModal(); renderAll(); toast("✅ 已匯入"); }catch(e){ toast("格式不對，請貼完整的 JSON"); } }
+function doImport(){ try{ const d=JSON.parse(modal.querySelector("#impText").value); if(!d.courses)throw 0; migrateTeachers(d); courses=d.courses; marks=d.marks||{}; ensureCids(); saveData(); closeModal(); renderAll(); toast("✅ 已匯入"); }catch(e){ toast("格式不對，請貼完整的 JSON"); } }
 function resetData(){ openModal(`<h2>還原成預設？</h2><p class="field hint">會清掉目前的修改（含請假標記），回到範例課表。建議先「匯出備份」。</p><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" data-doreset>還原</button></div>`); }
-function doReset(){ teachers=[]; courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; ensureCids(); saveData(); closeModal(); renderAll(); toast("已還原預設"); }
+function doReset(){ courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; ensureCids(); saveData(); closeModal(); renderAll(); toast("已還原預設"); }
 
 let tt; function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove("show"),3000); }
 
@@ -619,7 +606,7 @@ document.addEventListener("click",e=>{
     openCourseModal(null,{recur:"weekly",day:body.dataset.day,start:fmtHM(mins),end:fmtHM(mins+60)});
     return;
   }
-  const el=e.target.closest("[data-detail],[data-edit],[data-leave],[data-add],[data-dayopen],[data-addonce],[data-teachers],[data-export],[data-import],[data-reset],[data-savecourse],[data-deldirect],[data-saveteachers],[data-taddrow],[data-trm],[data-close],[data-doimport],[data-doreset],[data-viewweek],[data-viewmonth],[data-navprev],[data-navnext],[data-navtoday],[data-togglemark],[data-savenote]");
+  const el=e.target.closest("[data-detail],[data-edit],[data-leave],[data-add],[data-dayopen],[data-addonce],[data-export],[data-import],[data-reset],[data-savecourse],[data-deldirect],[data-close],[data-doimport],[data-doreset],[data-viewweek],[data-viewmonth],[data-navprev],[data-navnext],[data-navtoday],[data-togglemark],[data-savenote]");
   if(!el || el.tagName==="A") return;
   const d=el.dataset;
   if(d.detail!==undefined) openCourseDetail(+d.detail, d.date||ymd(now));
@@ -628,15 +615,11 @@ document.addEventListener("click",e=>{
   else if(d.add!==undefined) openCourseModal(null);
   else if(d.dayopen!==undefined) openDayModal(d.dayopen);
   else if(d.addonce!==undefined) openCourseModal(null,{recur:"once",date:d.addonce});
-  else if(d.teachers!==undefined) openTeacherModal();
   else if(d.export!==undefined) exportData();
   else if(d.import!==undefined) openImport();
   else if(d.reset!==undefined) resetData();
   else if(d.savecourse!==undefined) saveCourse();
   else if(d.deldirect!==undefined) deleteCourseDirect(+d.deldirect);
-  else if(d.saveteachers!==undefined) saveTeachers();
-  else if(d.taddrow!==undefined) addTeacherRow();
-  else if(d.trm!==undefined){ const r=el.closest(".trow"); if(r) r.remove(); }
   else if(d.close!==undefined) closeModal();
   else if(d.doimport!==undefined) doImport();
   else if(d.doreset!==undefined) doReset();
