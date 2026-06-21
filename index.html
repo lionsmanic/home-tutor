@@ -278,6 +278,14 @@ const pasteKey=isMac?"⌘V":"Ctrl+V";
 const pad=n=>String(n).padStart(2,"0");
 const toMin=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
 const fmtHM=min=>{min=Math.max(0,Math.min(min,23*60+45));return pad(Math.floor(min/60))+":"+pad(min%60);};
+function normalizeTime(s){
+  if(!s) return ""; s=String(s).trim(); if(!s) return "";
+  if(/^\d{1,2}:\d{1,2}$/.test(s)){ const[h,m]=s.split(":").map(Number); return (h>23||m>59)?"":pad(h)+":"+pad(m); }
+  const dg=s.replace(/\D/g,""); if(!dg) return "";
+  let h,m;
+  if(dg.length<=2){ h=+dg; m=0; } else if(dg.length===3){ h=+dg.slice(0,1); m=+dg.slice(1); } else { h=+dg.slice(0,2); m=+dg.slice(2,4); }
+  return (h>23||m>59)?"":pad(h)+":"+pad(m);
+}
 const childClass=c=>c.child==="Alyssa"?"alyssa":"sister";
 const teacherName=c=>c.tname?c.tname:"未指定老師";
 function teacherNames(){ return [...new Set(courses.map(c=>(c.tname||"").trim()).filter(Boolean))]; }
@@ -561,7 +569,7 @@ function openCourseModal(i,prefill){
     <div id="dayBox" class="field" style="${recurMode==="weekly"?"":"display:none"}"><label>星期</label><select id="f_day">${dayOpts}</select></div>
     <div id="dateBox" class="field" style="${recurMode==="once"?"":"display:none"}"><label>日期</label><input id="f_date" type="date" value="${c.date||ymd(now)}"></div>
     <div class="field"><label>時間</label><div class="seg"><button id="seg_fixed" class="${timeMode==="fixed"?"on":""}" data-mode="fixed">固定時間</button><button id="seg_flex" class="${timeMode==="flex"?"on":""}" data-mode="flex">彈性說明</button></div></div>
-    <div id="fixedBox" class="row2" style="${timeMode==="fixed"?"":"display:none"}"><div class="field"><label>開始</label><input id="f_start" type="time" value="${c.start||""}"></div><div class="field"><label>結束</label><input id="f_end" type="time" value="${c.end||""}"></div></div>
+    <div id="fixedBox" class="row2" style="${timeMode==="fixed"?"":"display:none"}"><div class="field"><label>開始</label><input id="f_start" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:MM 例 09:30" value="${c.start||""}"></div><div class="field"><label>結束</label><input id="f_end" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:MM 例 10:30" value="${c.end||""}"></div></div>
     <div id="flexBox" class="field" style="${timeMode==="flex"?"":"display:none"}"><label>時間說明</label><input id="f_note" value="${esc(c.timeNote)}" placeholder="例如：晚餐後 20 分鐘 / 有空再去"></div>
     <div class="field"><label>目標／備註</label><input id="f_goal" value="${esc(c.goal)}" placeholder="這堂課的重點"></div>
     <div class="field"><label>老師聯絡方式（選填，請假會用到）</label>
@@ -573,6 +581,7 @@ function openCourseModal(i,prefill){
     <div class="modal-acts">${editIndex===null?"":`<button class="btn btn-del" data-deldirect="${editIndex}">刪除</button>`}<button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-savecourse>儲存</button></div>`);
   modal.querySelectorAll("[data-recur]").forEach(b=>b.addEventListener("click",()=>{ recurMode=b.dataset.recur; modal.querySelector("#seg_weekly").classList.toggle("on",recurMode==="weekly"); modal.querySelector("#seg_once").classList.toggle("on",recurMode==="once"); modal.querySelector("#dayBox").style.display=recurMode==="weekly"?"":"none"; modal.querySelector("#dateBox").style.display=recurMode==="once"?"":"none"; }));
   modal.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{ timeMode=b.dataset.mode; applyTimeSeg(); }));
+  ["#f_start","#f_end"].forEach(id=>{ const el=modal.querySelector(id); if(el) el.addEventListener("blur",()=>{ const n=normalizeTime(el.value); if(n) el.value=n; }); });
   const tsel=modal.querySelector("#f_template");
   if(tsel) tsel.addEventListener("change",()=>{ const x=courses[+tsel.value]; if(!x) return;
     modal.querySelector("#f_child").value=x.child; modal.querySelector("#f_title").value=x.title; modal.querySelector("#f_goal").value=x.goal||"";
@@ -587,7 +596,7 @@ function saveCourse(){
   const g=id=>modal.querySelector(id);
   const obj={ cid:editIndex===null?cuid():(courses[editIndex].cid||cuid()), child:g("#f_child").value, title:(g("#f_title").value||"").trim()||"未命名課程", tname:(g("#f_tname").value||"").trim(), line:(g("#f_line").value||"").trim(), email:(g("#f_email").value||"").trim(), fb:(g("#f_fb").value||"").trim(), goal:(g("#f_goal").value||"").trim(), paused:g("#f_paused").checked };
   if(recurMode==="once"){ obj.recur="once"; obj.date=g("#f_date").value||ymd(now); } else { obj.recur="weekly"; obj.day=g("#f_day").value; }
-  if(timeMode==="fixed"){ const s=g("#f_start").value,e=g("#f_end").value; if(s&&e&&toMin(e)<=toMin(s)){toast("結束時間要晚於開始時間");return;} if(s){obj.start=s;obj.end=e||s;} } else { obj.timeNote=(g("#f_note").value||"").trim()||"時間未定"; }
+  if(timeMode==="fixed"){ const sr=g("#f_start").value.trim(), er=g("#f_end").value.trim(); const s=normalizeTime(sr), e=normalizeTime(er); if((sr&&!s)||(er&&!e)){ toast("時間格式請用 HH:MM，例如 09:30"); return; } if(s&&e&&toMin(e)<=toMin(s)){toast("結束時間要晚於開始時間");return;} if(s){obj.start=s;obj.end=e||s;} } else { obj.timeNote=(g("#f_note").value||"").trim()||"時間未定"; }
   if(editIndex===null) courses.push(obj); else courses[editIndex]=obj;
   saveData(); closeModal(); renderAll(); toast(editIndex===null?"已新增課程":"已更新課程");
 }
