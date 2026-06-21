@@ -268,6 +268,8 @@ const WEEK_CH=["","週一","週二","週三","週四","週五","週六","週日"
 const DAY_ISO={"週一":1,"週二":2,"週三":3,"週四":4,"週五":5,"週六":6,"週日":7};
 const now=new Date();
 const isMobile=/iphone|ipad|ipod|android/i.test(navigator.userAgent);
+const isMac=/macintosh|mac os x/i.test(navigator.userAgent);
+const pasteKey=isMac?"⌘V":"Ctrl+V";
 const pad=n=>String(n).padStart(2,"0");
 const toMin=t=>{const[h,m]=t.split(":").map(Number);return h*60+m;};
 const fmtHM=min=>{min=Math.max(0,Math.min(min,23*60+45));return pad(Math.floor(min/60))+":"+pad(min%60);};
@@ -452,6 +454,11 @@ function leaveMsg(c,t,ds){
   const timeStr=c.start?`${c.start}–${c.end} `:"";
   return `${tname}您好，我是 ${c.child} 的家長。\n${c.child} ${when} ${timeStr}的「${c.title}」想請假一次，\n不好意思，麻煩老師了，謝謝！🙏`;
 }
+function extractLineId(v){ if(!v) return ""; v=v.trim(); const m=v.match(/ti\/p\/~?([A-Za-z0-9._-]+)/); if(m) return m[1]; if(!/^https?:/i.test(v)) return v.replace(/^~/,""); return ""; }
+function launchLine(url){
+  if(url.indexOf("line://")===0){ const a=document.createElement("a"); a.href=url; a.style.display="none"; document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(),200); }
+  else window.open(url,"_blank");
+}
 function doLeave(i,ds,channel){
   const c=courses[i],t=teacherById(c.teacherId),msg=leaveMsg(c,t,ds);
   setLeave(c,ds,true);
@@ -459,19 +466,20 @@ function doLeave(i,ds,channel){
     window.open(mailUrl(t,`請假通知 - ${c.child} ${c.title}`,msg),"_blank");
     toast("✅ 已標記請假並開啟 Email，內容已填好，按寄出即可");
   } else {
-    // LINE：訊息一定先複製好（貼一下就送）
     copyText(msg).then(()=>{
+      const id=t?extractLineId(t.line):"";
       if(t&&t.line){
-        // 有存老師的 LINE 連結 → 直接開那位老師的對話，貼上即可
-        window.open(lineUrl(t),"_blank");
-        toast("✅ 已標記＋複製訊息，已開啟老師 LINE 對話，貼上(長按→貼上)送出");
+        // 有存老師連結 → 直接開那位老師的對話（電腦優先用 App scheme）
+        if(!isMobile && id) launchLine("line://ti/p/~"+id); else window.open(lineUrl(t),"_blank");
+        toast(`✅ 已標記＋複製訊息，已開啟 ${t.name} 的 LINE 對話，按 ${pasteKey} 貼上再送出`);
       } else if(isMobile){
-        // 手機沒存連結 → 用 LINE 分享，選老師、訊息已帶好
+        // 手機 → LINE 分享，選老師、訊息已帶好
         window.open("https://line.me/R/share?text="+encodeURIComponent(msg),"_blank");
         toast("✅ 已標記請假，LINE 開啟後選老師按送出即可");
       } else {
-        // 電腦沒存連結 → 不要跳到官網，直接複製請你貼到 LINE 電腦版
-        toast("✅ 已標記＋已複製請假訊息！請打開 LINE 電腦版，貼到老師的對話送出");
+        // 電腦沒存連結 → 喚起 LINE App 的分享畫面（訊息已複製為後備）
+        launchLine("line://msg/text/"+encodeURIComponent(msg));
+        toast(`✅ 已標記＋複製訊息，正在喚起 LINE（若跳出「在 LINE 中開啟」請按允許）；選老師後按 ${pasteKey} 貼上送出`);
       }
     });
   }
@@ -505,7 +513,7 @@ function openCourseDetail(i,ds){
       ? `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">按下會開啟 ${teacherName(c)} 的 LINE 對話，訊息已複製，貼上送出即可。</p>`
       : (isMobile
           ? `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">按下會開 LINE 讓你選老師，訊息已帶好。</p>`
-          : `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">電腦版：按下會複製訊息，請貼到 LINE 電腦版老師的對話。想一鍵開老師對話，可在「管理老師」填他的 LINE 連結。</p>`);
+          : `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">電腦版：按下會喚起 LINE App 並複製訊息（LINE 無法自動填入別人對話，貼一下即可）。想直接開某老師對話，可在「管理老師」填他的 LINE 連結。</p>`);
   const status=m.leave?`<div class="leave-status">✅ 已標記請假（${d.getMonth()+1}/${d.getDate()}）<button class="linkbtn" data-togglemark>取消標記</button></div>`:"";
   const contacts=t?contactBtns(t):"";
   openModal(`
