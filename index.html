@@ -101,7 +101,9 @@
   @media(max-width:560px){ .mcell{min-height:58px;} .mc-chip{font-size:0;line-height:0;padding:0;height:5px;border-radius:3px;} .mhcell{font-size:11px;} }
 
   .agz-day{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;}
-  .agz-h{padding:9px 14px;font-weight:900;font-size:15px;background:#fbf6ee;border-bottom:1px solid var(--hair);}
+  .agz-h{padding:9px 14px;font-weight:900;font-size:15px;background:#fbf6ee;border-bottom:1px solid var(--hair);display:flex;justify-content:space-between;align-items:center;}
+  .agz-add{border:1px solid var(--hair);background:#fff;border-radius:8px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);}
+  .agz-empty{padding:11px 14px;color:var(--muted);font-size:13px;}
   .agz-day.now .agz-h{background:var(--sun-soft);color:#9A6611;}
   .agz-ev{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:none;background:none;border-bottom:1px solid var(--hair);padding:11px 14px;cursor:pointer;font-family:inherit;color:var(--ink);}
   .agz-ev:last-child{border-bottom:none;}
@@ -375,14 +377,16 @@ function renderWeekGrid(){
 function renderWeekAgenda(){
   let html="";
   weekDates().forEach(d=>{
-    const ds=ymd(d), {set}=conflictsOn(d);
+    const ds=ymd(d), dayName=WEEK_CH[isoOf(d)], {set}=conflictsOn(d);
     const occ=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)).sort((a,b)=>sortKey(a.c)-sortKey(b.c));
-    if(!occ.length) return;
-    html+=`<div class="agz-day ${sameYmd(d,now)?'now':''}"><div class="agz-h">${WEEK_CH[isoOf(d)]} ${d.getMonth()+1}/${d.getDate()}${sameYmd(d,now)?' · 今天':''}</div>`+
-      occ.map(o=>{const m=getMark(o.c,ds);let tag=""; if(set.has(o.i))tag+=`<span class="agz-tag clash">⚠️</span>`; if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
-        return `<button class="agz-ev ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="agz-time">${displayTime(o.c)}</span><span class="agz-body"><b>${o.c.title}</b><small>${o.c.child} · ${teacherName(o.c)}</small></span>${tag}</button>`;}).join("")+`</div>`;
+    const head=`<div class="agz-h"><span>${dayName} ${d.getMonth()+1}/${d.getDate()}${sameYmd(d,now)?' · 今天':''}</span><button class="agz-add" data-addday="${dayName}">＋ 加課</button></div>`;
+    const body = occ.length
+      ? occ.map(o=>{const m=getMark(o.c,ds);let tag=""; if(set.has(o.i))tag+=`<span class="agz-tag clash">⚠️</span>`; if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
+          return `<button class="agz-ev ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="agz-time">${displayTime(o.c)}</span><span class="agz-body"><b>${o.c.title}</b><small>${o.c.child} · ${teacherName(o.c)}</small></span>${tag}</button>`;}).join("")
+      : `<div class="agz-empty">這天沒課，點「＋ 加課」新增；點任一堂課可編輯或刪除</div>`;
+    html+=`<div class="agz-day ${sameYmd(d,now)?'now':''}">${head}${body}</div>`;
   });
-  return html||`<div class="restday">這週還沒有課，點上面「＋ 新增課程」開始 ✏️</div>`;
+  return html;
 }
 function renderMonth(){
   const y=cursor.getFullYear(), m=cursor.getMonth();
@@ -606,13 +610,14 @@ document.addEventListener("click",e=>{
     openCourseModal(null,{recur:"weekly",day:body.dataset.day,start:fmtHM(mins),end:fmtHM(mins+60)});
     return;
   }
-  const el=e.target.closest("[data-detail],[data-edit],[data-leave],[data-add],[data-dayopen],[data-addonce],[data-export],[data-import],[data-reset],[data-savecourse],[data-deldirect],[data-close],[data-doimport],[data-doreset],[data-viewweek],[data-viewmonth],[data-navprev],[data-navnext],[data-navtoday],[data-togglemark],[data-savenote]");
+  const el=e.target.closest("[data-detail],[data-edit],[data-leave],[data-add],[data-addday],[data-dayopen],[data-addonce],[data-export],[data-import],[data-reset],[data-savecourse],[data-deldirect],[data-close],[data-doimport],[data-doreset],[data-viewweek],[data-viewmonth],[data-navprev],[data-navnext],[data-navtoday],[data-togglemark],[data-savenote]");
   if(!el || el.tagName==="A") return;
   const d=el.dataset;
   if(d.detail!==undefined) openCourseDetail(+d.detail, d.date||ymd(now));
   else if(d.edit!==undefined) openCourseModal(+d.edit);
   else if(d.leave!==undefined) doLeave(+d.leave, d.ds||ymd(now), d.channel||"line");
   else if(d.add!==undefined) openCourseModal(null);
+  else if(d.addday!==undefined) openCourseModal(null,{recur:"weekly",day:d.addday});
   else if(d.dayopen!==undefined) openDayModal(d.dayopen);
   else if(d.addonce!==undefined) openCourseModal(null,{recur:"once",date:d.addonce});
   else if(d.export!==undefined) exportData();
