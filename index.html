@@ -104,6 +104,17 @@
   .agz-h{padding:9px 14px;font-weight:900;font-size:15px;background:#fbf6ee;border-bottom:1px solid var(--hair);display:flex;justify-content:space-between;align-items:center;}
   .agz-add{border:1px solid var(--hair);background:#fff;border-radius:8px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);}
   .agz-empty{padding:11px 14px;color:var(--muted);font-size:13px;}
+  .agz-clash{background:var(--clash-soft);border-top:1px solid var(--hair);}
+  .agz-clash-h{padding:8px 14px 5px;font-size:12.5px;font-weight:800;color:var(--clash);}
+  .agz-clash-row{display:flex;gap:8px;padding:0 12px 12px;}
+  .agz-cev{flex:1;min-width:0;text-align:left;border:none;border-radius:12px;padding:9px 10px;cursor:pointer;font-family:inherit;color:#fff;display:flex;flex-direction:column;gap:1px;box-shadow:0 2px 6px rgba(0,0,0,.12);}
+  .agz-cev.alyssa{background:var(--alyssa);} .agz-cev.sister{background:var(--sister);}
+  .agz-cev.leave{opacity:.6;} .agz-cev.leave .cev-ti{text-decoration:line-through;}
+  .cev-who{font-size:11px;font-weight:800;opacity:.92;}
+  .cev-t{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;opacity:.95;}
+  .cev-ti{font-size:13px;font-weight:700;line-height:1.2;overflow-wrap:anywhere;}
+  .agz-cev small{font-size:11px;opacity:.85;}
+  .agz-cev .agz-tag{align-self:flex-start;margin-top:3px;background:rgba(255,255,255,.9);color:var(--clash);}
   .agz-day.now .agz-h{background:var(--sun-soft);color:#9A6611;}
   .agz-ev{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:none;background:none;border-bottom:1px solid var(--hair);padding:11px 14px;cursor:pointer;font-family:inherit;color:var(--ink);}
   .agz-ev:last-child{border-bottom:none;}
@@ -383,16 +394,41 @@ function renderWeekGrid(){
   if(flexItems.length) flexbar=`<div class="flexbar"><span class="lbl">彈性／無固定時間：</span>`+flexItems.map(o=>{const ds=ymd(o.d),m=getMark(o.c,ds);return `<button class="flexchip ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="d">${o.c.recur==="once"?(o.d.getMonth()+1)+"/"+o.d.getDate():WEEK_CH[isoOf(o.d)]}</span> ${o.c.title} · ${o.c.child}</button>`;}).join("")+`</div>`;
   return `<div class="cal-wrap"><div class="cal"><div class="col axis"><div class="col-head"></div><div class="col-body" style="height:${bodyH}px">${axis}</div></div>${cols}</div></div>`+flexbar;
 }
+function agzRow(o,ds){
+  const c=o.c, m=getMark(c,ds); let tag="";
+  if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
+  return `<button class="agz-ev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="agz-time">${displayTime(c)}</span><span class="agz-body"><b>${c.title}</b><small>${c.child} · ${teacherName(c)}</small></span>${tag}</button>`;
+}
+function agzClashCard(o,ds){
+  const c=o.c, m=getMark(c,ds); let tag="";
+  if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
+  return `<button class="agz-cev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="cev-who">${c.child}</span><span class="cev-t">${displayTime(c)}</span><span class="cev-ti">${c.title}</span><small>${teacherName(c)}</small>${tag}</button>`;
+}
+function dayItemsHtml(d,ds){
+  const occ=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d));
+  const timed=occ.filter(o=>o.c.start&&o.c.end).map(o=>({...o,s:toMin(o.c.start),e:toMin(o.c.end)})).sort((a,b)=>a.s-b.s||a.e-b.e);
+  const untimed=occ.filter(o=>!(o.c.start&&o.c.end)).sort((a,b)=>sortKey(a.c)-sortKey(b.c));
+  // 把時間重疊的課分群
+  const clusters=[]; let cur=[],ce=-1;
+  timed.forEach(o=>{ if(cur.length&&o.s>=ce){clusters.push(cur);cur=[];ce=-1;} cur.push(o); ce=Math.max(ce,o.e); });
+  if(cur.length)clusters.push(cur);
+  let html="";
+  clusters.forEach(cl=>{
+    if(cl.length===1){ html+=agzRow(cl[0],ds); return; }
+    const lo=Math.min(...cl.map(x=>x.s)), hi=Math.max(...cl.map(x=>x.e));
+    const names=[...new Set(cl.map(x=>x.c.child))].join("、");
+    html+=`<div class="agz-clash"><div class="agz-clash-h">⚠️ 同時段 ${fmtHM(lo)}–${fmtHM(hi)}（${names}）</div><div class="agz-clash-row">`+cl.map(o=>agzClashCard(o,ds)).join("")+`</div></div>`;
+  });
+  untimed.forEach(o=>{ html+=agzRow(o,ds); });
+  return html;
+}
 function renderWeekAgenda(){
   let html="";
   weekDates().forEach(d=>{
-    const ds=ymd(d), dayName=WEEK_CH[isoOf(d)], {set}=conflictsOn(d);
-    const occ=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)).sort((a,b)=>sortKey(a.c)-sortKey(b.c));
+    const ds=ymd(d), dayName=WEEK_CH[isoOf(d)];
+    const hasAny=courses.some(c=>occursOnDate(c,d));
     const head=`<div class="agz-h"><span>${dayName} ${d.getMonth()+1}/${d.getDate()}${sameYmd(d,now)?' · 今天':''}</span><button class="agz-add" data-addday="${dayName}">＋ 加課</button></div>`;
-    const body = occ.length
-      ? occ.map(o=>{const m=getMark(o.c,ds);let tag=""; if(set.has(o.i))tag+=`<span class="agz-tag clash">⚠️</span>`; if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
-          return `<button class="agz-ev ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="agz-time">${displayTime(o.c)}</span><span class="agz-body"><b>${o.c.title}</b><small>${o.c.child} · ${teacherName(o.c)}</small></span>${tag}</button>`;}).join("")
-      : `<div class="agz-empty">這天沒課，點「＋ 加課」新增；點任一堂課可編輯或刪除</div>`;
+    const body=hasAny?dayItemsHtml(d,ds):`<div class="agz-empty">這天沒課，點「＋ 加課」新增；點任一堂課可編輯或刪除</div>`;
     html+=`<div class="agz-day ${sameYmd(d,now)?'now':''}">${head}${body}</div>`;
   });
   return html;
@@ -514,10 +550,9 @@ function closeModal(){ backdrop.classList.remove("show"); }
 backdrop.addEventListener("click",e=>{ if(e.target===backdrop) closeModal(); });
 
 function openDayModal(s){
-  const d=parseYmd(s), {set}=conflictsOn(d);
-  const occ=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)).sort((a,b)=>sortKey(a.c)-sortKey(b.c));
-  const list=occ.length?occ.map(o=>{const m=getMark(o.c,s);let tag=""; if(set.has(o.i))tag+=`<span class="agz-tag clash">⚠️</span>`; if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
-    return `<button class="agz-ev ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${s}"><span class="agz-time">${displayTime(o.c)}</span><span class="agz-body"><b>${o.c.title}</b><small>${o.c.child} · ${teacherName(o.c)}</small></span>${tag}</button>`;}).join(""):`<p class="detail-meta">這天還沒有課。</p>`;
+  const d=parseYmd(s);
+  const hasAny=courses.some(c=>occursOnDate(c,d));
+  const list=hasAny?dayItemsHtml(d,s):`<p class="detail-meta">這天還沒有課。</p>`;
   openModal(`<h2>${d.getMonth()+1}/${d.getDate()}（${WEEK_CH[isoOf(d)]}）</h2><div style="margin:-2px -2px 0">${list}</div>
     <div class="modal-acts"><button class="btn btn-cancel" data-close>關閉</button><button class="btn btn-save" data-addonce="${s}">＋ 新增單次課程</button></div>`);
 }
