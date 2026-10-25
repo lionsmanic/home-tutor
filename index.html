@@ -88,14 +88,18 @@
   .ev.leave{background:repeating-linear-gradient(135deg,#F4F2EE 0 6px,#ECE9E3 6px 12px);border-color:#C9C4BA;}
   .ev.leave .ev-title,.ev.leave .ev-t{text-decoration:line-through;color:var(--muted);}
   .ev-top{display:flex;align-items:flex-start;gap:3px;}
-  .ev-top .ev-t{flex:1;min-width:0;}
+  .ev-top .ev-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .ev-badges{display:flex;gap:2px;flex:0 0 auto;}
   .ev-b{font-size:9.5px;background:#fff;color:var(--ink);border-radius:4px;padding:0 3px;font-weight:700;line-height:1.5;box-shadow:0 0 0 1px var(--hair);}
   .ev-b.clash{background:var(--clash);color:#fff;box-shadow:none;} .ev-b.leave{color:var(--clash);}
   .ev.narrow{padding:3px 4px 3px 5px;} .ev.narrow .ev-title{font-size:11px;}
   .ev-t{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;}
   .ev-title{font-size:12px;font-weight:800;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-  .ev-who{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .kid{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:5px;font-style:normal;font-size:10.5px;font-weight:900;color:#fff;line-height:1;flex:0 0 auto;vertical-align:1px;margin-right:4px;font-family:"Baloo 2",system-ui,sans-serif;}
+  .kid.alyssa{background:var(--alyssa);} .kid.sister{background:var(--sister);}
+  .agz-cev .kid{background:rgba(255,255,255,.9);} .agz-ev.leave .kid{background:#BDB8AE;} .agz-cev.alyssa .kid{color:var(--alyssa);} .agz-cev.sister .kid{color:var(--sister);}
+  .ev.leave .kid{background:#BDB8AE;}
+  .ev-top .kid{margin-right:2px;}
 
   /* 月曆 */
   .month{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
@@ -254,7 +258,7 @@
   <header class="hero">
     <p class="eyebrow">DAILY SCHEDULE</p>
     <h1>Alyssa &amp; Evelyn 的每日課表</h1>
-    <div class="who-key"><span><i class="dot" style="background:#E2674A"></i>Alyssa</span><span><i class="dot" style="background:#2A9D8F"></i>Evelyn</span></div>
+    <div class="who-key"><span><i class="kid alyssa">A</i>Alyssa</span><span><i class="kid sister">E</i>Evelyn</span></div>
     <div class="today-line" id="todayLine">載入中…</div>
   </header>
 
@@ -361,6 +365,8 @@ function normalizeTime(s){
 }
 const childClass=c=>c.child==="Alyssa"?"alyssa":"sister";
 const teacherName=c=>c.tname?c.tname:"未指定老師";
+const kidInit=c=>c.child==="Alyssa"?"A":c.child==="Evelyn"?"E":(c.child||"?").slice(0,1).toUpperCase();
+const kidTag=c=>`<i class="kid ${childClass(c)}">${kidInit(c)}</i>`;
 function teacherNames(){ return [...new Set(courses.map(c=>(c.tname||"").trim()).filter(Boolean))]; }
 const esc=s=>(s||"").replace(/"/g,"&quot;");
 function displayTime(c){ if(c.start) return c.end?`${c.start}–${c.end}`:c.start; if(c.timeNote) return c.timeNote; return "時間未定"; }
@@ -397,8 +403,8 @@ function conflictsOn(d){
   for(let a=0;a<occ.length;a++)for(let b=a+1;b<occ.length;b++){
     if(!overlap(occ[a].c,occ[b].c)) continue;
     const md=`${d.getMonth()+1}/${d.getDate()}`;
-    if(occ[a].c.child===occ[b].c.child){ set.add(occ[a].i); set.add(occ[b].i); notes.push(`${md} ${occ[a].c.child}：「${occ[a].c.title}」${occ[a].c.start} 與「${occ[b].c.title}」${occ[b].c.start} 衝堂`); }
-    else both.push(`${md} ${occ[a].c.start}「${occ[a].c.title}」（${occ[a].c.child}）與 ${occ[b].c.start}「${occ[b].c.title}」（${occ[b].c.child}）`);
+    if(occ[a].c.child===occ[b].c.child){ set.add(occ[a].i); set.add(occ[b].i); notes.push(`${md} ${kidInit(occ[a].c)}：「${occ[a].c.title}」${occ[a].c.start} 與「${occ[b].c.title}」${occ[b].c.start} 衝堂`); }
+    else both.push(`${md} ${occ[a].c.start}「${occ[a].c.title}」（${kidInit(occ[a].c)}）與 ${occ[b].c.start}「${occ[b].c.title}」（${kidInit(occ[b].c)}）`);
   }
   return {set,notes,both};
 }
@@ -422,7 +428,7 @@ function renderToday(){
     const c=o.c, m=getMark(c,ds);
     let tags=""; if(set.has(o.i)) tags+=`<span class="clashtag">⚠️ 衝堂</span>`; if(m&&m.leave) tags+=`<span class="agz-tag leave">請假</span>`; if(m&&m.note) tags+=`<span class="agz-tag note">📝</span>`;
     return `<button class="row ${childClass(c)} ${m&&m.leave?'':''}" data-detail="${o.i}" data-date="${ds}" style="width:100%;text-align:left;background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);cursor:pointer;font-family:inherit;${m&&m.leave?'opacity:.6;':''}">
-      <div class="info"><b>${displayTime(c)}</b> ${tags}<br><b>${c.title}</b><small>${c.child} · ${teacherName(c)}</small></div></button>`;
+      <div class="info"><b>${displayTime(c)}</b> ${tags}<br><b>${kidTag(c)}${c.title}</b></div></button>`;
   }).join("");
 }
 
@@ -459,7 +465,7 @@ function renderWeekGrid(){
     heads+=`<div class="wk-h${st}"><span class="wd">${dayName}</span><span class="dn">${d.getDate()}</span></div>`;
     const flex=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)&&!(o.c.start&&o.c.end));
     if(flex.length) hasAll=true;
-    all+=`<div class="wk-all${sameYmd(d,now)?' now':''}">`+flex.map(o=>{const m=getMark(o.c,ds);return `<button class="allchip ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}" title="${esc(o.c.title)}">${o.c.timeNote?o.c.timeNote+" · ":""}${o.c.title}</button>`;}).join("")+`</div>`;
+    all+=`<div class="wk-all${sameYmd(d,now)?' now':''}">`+flex.map(o=>{const m=getMark(o.c,ds);return `<button class="allchip ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}" title="${esc(o.c.title)}">${kidTag(o.c)}${o.c.timeNote?o.c.timeNote+" · ":""}${o.c.title}</button>`;}).join("")+`</div>`;
     const occ=layoutDay(courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)&&o.c.start&&o.c.end).map(o=>({...o,s:toMin(o.c.start),e:toMin(o.c.end)})));
     let blocks="";
     occ.forEach(o=>{
@@ -467,8 +473,7 @@ function renderWeekGrid(){
       let top=(o.s-top0)/60*hourPx+1, ht=Math.max(28,(o.e-o.s)/60*hourPx-3);
       const m=getMark(o.c,ds);
       const cls=childClass(o.c)+(set.has(o.i)?" clash":"")+(m&&m.leave?" leave":"");
-      const who=ht>=62?`<span class="ev-who">${o.c.child}${o.c.tname?" · "+o.c.tname:""}</span>`:"";
-      blocks+=`<button class="ev ${cls}${o.ncols>1?' narrow':''}" data-detail="${o.i}" data-date="${ds}" title="${esc(o.c.start+"–"+o.c.end+" "+o.c.title+"（"+o.c.child+"）")}" style="top:${top}px;height:${ht}px;left:calc(${left}% + 3px);width:calc(${w}% - 6px)"><span class="ev-top"><span class="ev-t">${o.ncols>1?o.c.start:o.c.start+"–"+o.c.end}</span>${evBadges(o.c,ds,set.has(o.i))}</span><span class="ev-title">${o.c.title}</span>${who}</button>`;
+      blocks+=`<button class="ev ${cls}${o.ncols>1?' narrow':''}" data-detail="${o.i}" data-date="${ds}" title="${esc(o.c.start+"–"+o.c.end+" "+o.c.title+"（"+o.c.child+"）")}" style="top:${top}px;height:${ht}px;left:calc(${left}% + 3px);width:calc(${w}% - 6px)"><span class="ev-top">${kidTag(o.c)}<span class="ev-t">${o.ncols>1?o.c.start:o.c.start+"–"+o.c.end}</span>${evBadges(o.c,ds,set.has(o.i))}</span><span class="ev-title">${o.c.title}</span></button>`;
     });
     if(sameYmd(d,now)){ const nm=now.getHours()*60+now.getMinutes(); if(nm>=top0&&nm<=hiH*60) blocks+=`<div class="nowline" style="top:${(nm-top0)/60*hourPx}px"></div>`; }
     cols+=`<div class="wk-col${st}" data-day="${dayName}" data-top0="${top0}" data-hourpx="${hourPx}" style="height:${bodyH}px;background-size:100% ${hourPx}px,100% ${hourPx}px;background-position:0 0,0 ${hourPx/2}px">${blocks}</div>`;
@@ -478,12 +483,12 @@ function renderWeekGrid(){
 function agzRow(o,ds){
   const c=o.c, m=getMark(c,ds); let tag="";
   if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
-  return `<button class="agz-ev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="agz-time">${displayTime(c)}</span><span class="agz-body"><b>${c.title}</b><small>${c.child}${c.tname?" · "+c.tname:""}</small></span>${tag}</button>`;
+  return `<button class="agz-ev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="agz-time">${displayTime(c)}</span><span class="agz-body"><b>${kidTag(c)}${c.title}</b></span>${tag}</button>`;
 }
 function agzClashCard(o,ds){
   const c=o.c, m=getMark(c,ds); let tag="";
   if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
-  return `<button class="agz-cev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="cev-who">${c.child}</span><span class="cev-t">${displayTime(c)}</span><span class="cev-ti">${c.title}</span>${c.tname?`<small>${c.tname}</small>`:""}${tag}</button>`;
+  return `<button class="agz-cev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="cev-t">${kidTag(c)}${displayTime(c)}</span><span class="cev-ti">${c.title}</span>${tag}</button>`;
 }
 function dayItemsHtml(d,ds){
   const occ=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d));
@@ -527,7 +532,7 @@ function renderMonth(){
     const d=addDays(start,i), ds=ymd(d), inM=d.getMonth()===m, {set}=conflictsOn(d);
     const occ=courses.map((c,idx)=>({c,idx})).filter(o=>occursOnDate(o.c,d)).sort((a,b)=>sortKey(a.c)-sortKey(b.c));
     const st=o=>{const mk=getMark(o.c,ds);return `${childClass(o.c)} ${set.has(o.idx)?'clash':''} ${mk&&mk.leave?'leave':''}`;};
-    let chips=occ.slice(0,3).map(o=>`<span class="mc-chip ${st(o)}">${o.c.start?`<b>${o.c.start}</b>`:""}${o.c.title}</span>`).join("");
+    let chips=occ.slice(0,3).map(o=>`<span class="mc-chip ${st(o)}">${kidInit(o.c)} ${o.c.start?`<b>${o.c.start}</b>`:""}${o.c.title}</span>`).join("");
     if(occ.length>3) chips+=`<span class="mc-more">還有 ${occ.length-3} 堂</span>`;
     const dots=occ.length?`<span class="mc-dots">`+occ.slice(0,6).map(o=>`<i class="mc-dot ${st(o)}"></i>`).join("")+`</span>`:"";
     cells+=`<button class="mcell ${inM?'':'dim'} ${isoOf(d)>=6?'we':''} ${sameYmd(d,now)?'today':''}" data-dayopen="${ds}"><span class="mc-d">${d.getDate()}</span>${chips}${dots}</button>`;
