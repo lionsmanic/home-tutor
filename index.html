@@ -34,6 +34,8 @@
   .banner{display:none;margin:16px 0 0;background:var(--clash-soft);border:1px solid #F3C0C0;color:#9A2A2A;border-radius:var(--radius);padding:12px 14px;font-size:14px;font-weight:500;}
   .banner.show{display:block;}
   .banner b{font-weight:700;}
+  .banner.info{background:#F7F4EE;border-color:var(--hair);color:var(--ink);}
+  .banner .sub{margin-top:8px;color:var(--muted);font-size:13px;}
 
   .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 6px;}
   .tbtn{border:1px solid var(--hair);background:var(--card);border-radius:11px;padding:9px 13px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
@@ -136,6 +138,7 @@
   .agz-clash{background:var(--clash-soft);border-top:1px solid var(--hair);}
   .agz-clash-h{padding:8px 14px 5px;font-size:12.5px;font-weight:800;color:var(--clash);}
   .agz-clash-row{display:flex;gap:8px;padding:0 12px 12px;}
+  .agz-clash.both{background:#F7F4EE;} .agz-clash.both .agz-clash-h{color:var(--muted);}
   .agz-cev{flex:1;min-width:0;text-align:left;border:none;border-radius:12px;padding:9px 10px;cursor:pointer;font-family:inherit;color:#fff;display:flex;flex-direction:column;gap:1px;box-shadow:0 2px 6px rgba(0,0,0,.12);}
   .agz-cev.alyssa{background:var(--alyssa);} .agz-cev.sister{background:var(--sister);}
   .agz-cev.leave{opacity:.6;} .agz-cev.leave .cev-ti{text-decoration:line-through;}
@@ -390,12 +393,14 @@ function setNote(c,ds,n){ const k=mkey(c,ds),m=marks[k]||{}; m.note=n; if(!m.lea
 function overlap(a,b){ return a.start&&a.end&&b.start&&b.end && toMin(a.start)<toMin(b.end)&&toMin(b.start)<toMin(a.end); }
 function conflictsOn(d){
   const occ=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)&&o.c.start&&o.c.end);
-  const set=new Set(), notes=[];
+  const set=new Set(), notes=[], both=[];
   for(let a=0;a<occ.length;a++)for(let b=a+1;b<occ.length;b++){
-    if(overlap(occ[a].c,occ[b].c)){ set.add(occ[a].i); set.add(occ[b].i);
-      notes.push(`${d.getMonth()+1}/${d.getDate()} ${occ[a].c.start}「${occ[a].c.title}」與「${occ[b].c.title}」重疊${occ[a].c.child!==occ[b].c.child?"（兩人同時段，接送注意）":"（同一人衝堂）"}`); }
+    if(!overlap(occ[a].c,occ[b].c)) continue;
+    const md=`${d.getMonth()+1}/${d.getDate()}`;
+    if(occ[a].c.child===occ[b].c.child){ set.add(occ[a].i); set.add(occ[b].i); notes.push(`${md} ${occ[a].c.child}：「${occ[a].c.title}」${occ[a].c.start} 與「${occ[b].c.title}」${occ[b].c.start} 衝堂`); }
+    else both.push(`${md} ${occ[a].c.start}「${occ[a].c.title}」（${occ[a].c.child}）與 ${occ[b].c.start}「${occ[b].c.title}」（${occ[b].c.child}）`);
   }
-  return {set,notes};
+  return {set,notes,both};
 }
 function evBadges(c,ds,clash){
   const m=getMark(c,ds); let h="";
@@ -424,10 +429,19 @@ function renderToday(){
 /* ---------- 週曆 ---------- */
 function layoutDay(evs){
   evs.sort((a,b)=>a.s-b.s||a.e-b.e);
-  const colEnd=[];
-  evs.forEach(ev=>{ let i=0; while(i<colEnd.length&&ev.s<colEnd[i])i++; ev.col=i; colEnd[i]=ev.e; });
-  let cur=[],ce=-1; const flush=()=>{ if(cur.length){const n=Math.max(...cur.map(e=>e.col))+1;cur.forEach(e=>e.ncols=n);} cur=[];ce=-1; };
-  evs.forEach(ev=>{ if(cur.length&&ev.s>=ce)flush(); cur.push(ev); ce=Math.max(ce,ev.e); }); flush(); return evs;
+  const clusters=[]; let cur=[],ce=-1;
+  evs.forEach(ev=>{ if(cur.length&&ev.s>=ce){clusters.push(cur);cur=[];} cur.push(ev); ce=Math.max(cur.length>1?ce:-1,ev.e); });
+  if(cur.length) clusters.push(cur);
+  const order=k=>k==="Alyssa"?0:k==="Evelyn"?1:2;
+  clusters.forEach(cl=>{
+    const kids=[...new Set(cl.map(e=>e.c.child))].sort((a,b)=>order(a)-order(b)||a.localeCompare(b));
+    let off=0; const lanes=[];
+    kids.forEach(k=>{ const colEnd=[];
+      cl.filter(e=>e.c.child===k).forEach(e=>{ let i=0; while(i<colEnd.length&&e.s<colEnd[i])i++; colEnd[i]=e.e; e.sub=i; e.off=off; });
+      lanes.push(colEnd.length); off+=colEnd.length; });
+    cl.forEach(e=>{ e.col=e.off+e.sub; e.ncols=off; e.split=kids.length>1; });
+  });
+  return evs;
 }
 function weekDates(){ const ws=mondayOf(cursor); return Array.from({length:7},(_,i)=>addDays(ws,i)); }
 function renderWeekGrid(){
@@ -483,8 +497,10 @@ function dayItemsHtml(d,ds){
   clusters.forEach(cl=>{
     if(cl.length===1){ html+=agzRow(cl[0],ds); return; }
     const lo=Math.min(...cl.map(x=>x.s)), hi=Math.max(...cl.map(x=>x.e));
-    const names=[...new Set(cl.map(x=>x.c.child))].join("、");
-    html+=`<div class="agz-clash"><div class="agz-clash-h">⚠️ 同時段 ${fmtHM(lo)}–${fmtHM(hi)}（${names}）</div><div class="agz-clash-row">`+cl.map(o=>agzClashCard(o,ds)).join("")+`</div></div>`;
+    const kidsIn=[...new Set(cl.map(x=>x.c.child))], same=cl.length>kidsIn.length;
+    const order=k=>k==="Alyssa"?0:k==="Evelyn"?1:2; cl.sort((a,b)=>order(a.c.child)-order(b.c.child)||a.s-b.s);
+    const head=same?`⚠️ 衝堂 ${fmtHM(lo)}–${fmtHM(hi)}`:`兩人同時段 ${fmtHM(lo)}–${fmtHM(hi)} · 接送注意`;
+    html+=`<div class="agz-clash ${same?'':'both'}"><div class="agz-clash-h">${head}</div><div class="agz-clash-row">`+cl.map(o=>agzClashCard(o,ds)).join("")+`</div></div>`;
   });
   untimed.forEach(o=>{ html+=agzRow(o,ds); });
   return html;
@@ -531,10 +547,12 @@ function navHTML(){
 function viewHTML(){ if(viewMode==="month") return renderMonth(); return mqMobile.matches?renderWeekAgenda():renderWeekGrid(); }
 function viewDates(){ if(viewMode==="week") return weekDates(); const y=cursor.getFullYear(),m=cursor.getMonth(),dim=new Date(y,m+1,0).getDate(); return Array.from({length:dim},(_,i)=>new Date(y,m,i+1)); }
 function renderBanner(){
-  let notes=[]; viewDates().forEach(d=>{ notes=notes.concat(conflictsOn(d).notes); });
-  const b=document.getElementById("banner");
-  if(notes.length){ b.classList.add("show"); b.innerHTML=`<b>⚠️ ${viewMode==='week'?'本週':'本月'}有 ${notes.length} 處時間重疊：</b><br>`+notes.join("<br>"); }
-  else b.classList.remove("show");
+  let notes=[], both=[]; viewDates().forEach(d=>{ const r=conflictsOn(d); notes=notes.concat(r.notes); both=both.concat(r.both); });
+  const b=document.getElementById("banner"), span=viewMode==='week'?'本週':'本月';
+  let h="";
+  if(notes.length) h+=`<b>⚠️ ${span}有 ${notes.length} 處衝堂（同一個孩子）：</b><br>`+notes.join("<br>");
+  if(both.length) h+=`<div class="${notes.length?'sub':''}"><b>🚗 ${span}有 ${both.length} 處兩人同時段，接送注意：</b><br>`+both.join("<br>")+`</div>`;
+  b.classList.toggle("show",!!h); b.classList.toggle("info",!notes.length&&!!both.length); b.innerHTML=h;
 }
 function renderCalendar(){ document.getElementById("calendar").innerHTML=navHTML()+viewHTML(); renderBanner(); }
 
