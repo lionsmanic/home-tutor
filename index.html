@@ -212,7 +212,7 @@
       <button class="tbtn" data-share>📤 分享到其他裝置</button>
       <button class="tbtn" data-export>⬇ 匯出備份</button>
       <button class="tbtn" data-import>⬆ 匯入</button>
-      <button class="tbtn" data-reset>↺ 還原預設</button>
+      <button class="tbtn" data-reset>↺ 清空課表</button>
     </div>
 
     <div class="section-head"><h2>☀️ 今天的課</h2><span class="count" id="todayCount"></span></div>
@@ -249,25 +249,32 @@
   <div class="toast" id="toast"></div>
 
 <script>
-const DEFAULT_DATA = {
-  courses: [
-    { child:"Alyssa", title:"獵豹 video + mindmap 筆記", recur:"weekly", day:"週一", start:"10:00", end:"11:00", tname:"", line:"", email:"", fb:"", goal:"看完影片做 mindmap 整理" },
-    { child:"Alyssa", title:"程式語言（線上）",          recur:"weekly", day:"週二", start:"19:30", end:"20:30", tname:"", line:"", email:"", fb:"", goal:"暑假線上課先試這門" },
-    { child:"Alyssa", title:"游泳：轉身／跳水／蝶腳",     recur:"weekly", day:"週三", start:"15:00", end:"16:00", tname:"", line:"", email:"", fb:"", goal:"轉身、跳水、蝶腳訓練" },
-    { child:"Alyssa", title:"小提琴 or 大提琴",          recur:"weekly", day:"週四", timeNote:"樂器確定後再排", tname:"", line:"", email:"", fb:"", goal:"先決定學哪一種" },
-    { child:"Alyssa", title:"跟爸爸學籃球運球",          recur:"weekly", day:"週五", timeNote:"晚餐後 20 分鐘", tname:"爸爸", line:"", email:"", fb:"", goal:"建立球感" },
-    { child:"Alyssa", title:"極光看滑冰",                recur:"weekly", day:"週末", timeNote:"有空再去",       tname:"", line:"", email:"", fb:"", goal:"彈性活動" },
-    { child:"Evelyn", title:"音樂啟蒙", recur:"weekly", day:"週二", timeNote:"時間未定", tname:"", line:"", email:"", fb:"", goal:"以興趣為主" },
-    { child:"Evelyn", title:"游泳基礎", recur:"weekly", day:"週四", timeNote:"時間未定", tname:"", line:"", email:"", fb:"", goal:"建立水性" },
-  ]
-};
+const DEFAULT_DATA = { courses: [] };
 
-const STORE_KEY="alyssa-evelyn-schedule-v5";
+// 舊版內建的範例課程（child|title），載入舊資料時自動清掉，只保留自己加的課
+const LEGACY_SAMPLES = new Set([
+  "Alyssa|獵豹 video + mindmap 筆記",
+  "Alyssa|程式語言（線上）",
+  "Alyssa|游泳：轉身／跳水／蝶腳",
+  "Alyssa|小提琴 or 大提琴",
+  "Alyssa|跟爸爸學籃球運球",
+  "Alyssa|極光看滑冰",
+  "Evelyn|音樂啟蒙",
+  "Evelyn|游泳基礎"
+]);
+
+const STORE_KEY="alyssa-evelyn-schedule-v6";
+const OLD_STORE_KEY="alyssa-evelyn-schedule-v5";
 let courses=[], marks={};
 let viewMode="week", cursor=new Date();
 let detailI=null, detailDs=null;
 
-function loadData(){ try{ const raw=localStorage.getItem(STORE_KEY); if(raw) return JSON.parse(raw); }catch(e){} return null; }
+function loadData(){ try{ const raw=localStorage.getItem(STORE_KEY); if(raw) return JSON.parse(raw); }catch(e){} return migrateOld(); }
+// 從 v5 搬資料：移除內建範例課程與其請假／註記，保留使用者自己新增的課
+function migrateOld(){ try{ const raw=localStorage.getItem(OLD_STORE_KEY); if(!raw) return null; const d=JSON.parse(raw); if(!d||!d.courses) return null;
+  const keep=d.courses.filter(c=>!LEGACY_SAMPLES.has(c.child+"|"+c.title)); const ids=new Set(keep.map(c=>c.cid).filter(Boolean)); const marks={};
+  Object.keys(d.marks||{}).forEach(k=>{ if(ids.has(k.split("__")[0])) marks[k]=d.marks[k]; });
+  return {courses:keep,marks}; }catch(e){ return null; } }
 function saveData(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks})); }catch(e){} }
 const cuid=()=>"c_"+Math.random().toString(36).slice(2,8);
 function ensureCids(){ courses.forEach(c=>{ if(!c.cid) c.cid=cuid(); }); }
@@ -473,6 +480,7 @@ function renderCourseList(){
   const box=document.getElementById("courseList");
   const kids=[...new Set(courses.map(c=>c.child))]; ["Alyssa","Evelyn"].forEach(n=>{if(!kids.includes(n))kids.push(n);});
   const present=kids.filter(k=>courses.some(c=>c.child===k));
+  if(!present.length){ box.innerHTML=`<div class="empty-teachers">目前沒有課程，按上方「＋ 新增課程」開始排課。</div>`; return; }
   box.innerHTML=`<div class="list">`+present.map(kid=>{
     const cls=kid==="Alyssa"?"alyssa":"sister";
     const rows=courses.map((c,i)=>({c,i})).filter(o=>o.c.child===kid)
@@ -658,8 +666,8 @@ function promptShared(data){
 }
 function openImport(){ openModal(`<h2>匯入設定</h2><div class="field"><label>貼上備份的 JSON</label><textarea id="impText" rows="8" placeholder='{"teachers":[...],"courses":[...]}'></textarea></div><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-doimport>匯入</button></div>`); }
 function doImport(){ try{ const d=JSON.parse(modal.querySelector("#impText").value); if(!d.courses)throw 0; migrateTeachers(d); courses=d.courses; marks=d.marks||{}; ensureCids(); saveData(); closeModal(); renderAll(); toast("✅ 已匯入"); }catch(e){ toast("格式不對，請貼完整的 JSON"); } }
-function resetData(){ openModal(`<h2>還原成預設？</h2><p class="field hint">會清掉目前的修改（含請假標記），回到範例課表。建議先「匯出備份」。</p><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" data-doreset>還原</button></div>`); }
-function doReset(){ courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; ensureCids(); saveData(); closeModal(); renderAll(); toast("已還原預設"); }
+function resetData(){ openModal(`<h2>清空課表？</h2><p class="field hint">會清掉目前的修改（含請假標記），課表會變成空白。建議先「匯出備份」。</p><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" data-doreset>還原</button></div>`); }
+function doReset(){ courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; ensureCids(); saveData(); closeModal(); renderAll(); toast("已清空課表"); }
 
 let tt; function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("show"); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove("show"),3000); }
 
