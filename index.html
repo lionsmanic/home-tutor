@@ -204,6 +204,21 @@
   .field .hint{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;}
   .row2{display:flex;gap:10px;} .row2 .field{flex:1;}
   .seg{display:flex;gap:6px;}
+  .wdseg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:10px;}
+  .wdseg button{border:1px solid var(--hair);background:#fff;border-radius:9px;padding:8px 0;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;color:var(--ink);position:relative;}
+  .wdseg button.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .wdseg button i{position:absolute;top:-6px;right:-4px;min-width:16px;height:16px;padding:0 3px;border-radius:999px;background:var(--sun);color:#fff;font-size:10px;font-style:normal;line-height:16px;}
+  .dpk-tools{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+  .dpk-tools button{border:1px solid var(--hair);background:#fff;border-radius:8px;padding:5px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);}
+  .dpk-tools span{margin-left:auto;font-size:13px;color:var(--muted);font-weight:700;}
+  .dpk{max-height:260px;overflow-y:auto;border:1px solid var(--hair);border-radius:12px;padding:6px 10px 10px;background:#FDFBF7;}
+  .dpk-m{font-size:12px;font-weight:800;color:var(--muted);margin:8px 0 5px;}
+  .dpk-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px;}
+  .dpk-d{border:1px solid var(--hair);background:#fff;border-radius:10px;padding:7px 0;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .dpk-d.on{background:var(--sun);border-color:var(--sun);color:#fff;}
+  .dpk-d.today{box-shadow:inset 0 0 0 1.5px var(--sun);}
+  .dpk-sum{margin-top:8px;font-size:12.5px;color:var(--muted);line-height:1.6;}
+  .dpk-sum b{color:var(--ink);}
   .seg button{flex:1;border:1.5px solid var(--hair);background:#fff;border-radius:10px;padding:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted);}
   .seg button.on{border-color:var(--ink);background:var(--ink);color:#fff;}
   .checkrow{display:flex;align-items:center;gap:8px;font-size:14px;margin:2px 0 6px;font-weight:500;}
@@ -356,12 +371,15 @@ const sameYmd=(a,b)=>ymd(a)===ymd(b);
 
 function occursOnDate(c,d){
   if(c.paused) return false;
-  if(c.recur==="once") return c.date===ymd(d);
+  if(c.recur==="once") return onceDates(c).includes(ymd(d));
   const iso=isoOf(d);
   if(c.day==="週末") return iso===6||iso===7;
   return DAY_ISO[c.day]===iso;
 }
-function nextDateFor(c){ if(c.recur==="once") return c.date||ymd(now); if(c.day==="週末") return ymd(addDays(mondayOf(now),5)); const iso=DAY_ISO[c.day]||1; return ymd(addDays(mondayOf(now),iso-1)); }
+// 指定日期課程：dates 陣列（相容舊版單一 date）
+function onceDates(c){ return (c.dates&&c.dates.length)?c.dates:(c.date?[c.date]:[]); }
+function nextOnce(c){ const t=ymd(now), ds=onceDates(c).slice().sort(); return ds.find(x=>x>=t)||ds[ds.length-1]||t; }
+function nextDateFor(c){ if(c.recur==="once") return nextOnce(c); if(c.day==="週末") return ymd(addDays(mondayOf(now),5)); const iso=DAY_ISO[c.day]||1; return ymd(addDays(mondayOf(now),iso-1)); }
 
 /* marks：以 課程cid + 日期 為 key */
 const mkey=(c,ds)=>c.cid+"__"+ds;
@@ -521,7 +539,7 @@ function renderBanner(){
 function renderCalendar(){ document.getElementById("calendar").innerHTML=navHTML()+viewHTML(); renderBanner(); }
 
 /* ---------- 課程清單 ---------- */
-function schedLabel(c){ if(c.paused) return ["暫緩","st-pause"]; if(c.recur==="once"){ const d=c.date?parseYmd(c.date):null; return [d?`單次 ${d.getMonth()+1}/${d.getDate()}`:"單次","st-once"]; } return [`每週 ${c.day||""}`,"st-fixed"]; }
+function schedLabel(c){ if(c.paused) return ["暫緩","st-pause"]; if(c.recur==="once"){ const ds=onceDates(c); if(!ds.length) return ["單次","st-once"]; const n=parseYmd(nextOnce(c)), md=`${n.getMonth()+1}/${n.getDate()}`; if(ds.length===1) return [`單次 ${md}`,"st-once"]; const left=ds.filter(x=>x>=ymd(now)).length; return [left?`指定 ${ds.length} 天 · 下次 ${md}`:`指定 ${ds.length} 天（已結束）`,"st-once"]; } return [`每週 ${c.day||""}`,"st-fixed"]; }
 function renderCourseList(){
   const box=document.getElementById("courseList");
   const kids=[...new Set(courses.map(c=>c.child))]; ["Alyssa","Evelyn"].forEach(n=>{if(!kids.includes(n))kids.push(n);});
@@ -638,12 +656,34 @@ function openCourseDetail(i,ds){
 
 let editIndex=null, recurMode="weekly", timeMode="fixed";
 function applyTimeSeg(){ modal.querySelector("#seg_fixed").classList.toggle("on",timeMode==="fixed"); modal.querySelector("#seg_flex").classList.toggle("on",timeMode==="flex"); modal.querySelector("#fixedBox").style.display=timeMode==="fixed"?"":"none"; modal.querySelector("#flexBox").style.display=timeMode==="flex"?"":"none"; }
+/* ---- 指定日期挑選器：選星期 → 列出未來約半年的該星期日期，點選可複選 ---- */
+let pickDates=new Set(), pickWd=1;
+const PICK_WEEKS=26;
+function pickRange(){ const t=new Date(now); t.setHours(0,0,0,0); let d=addDays(t,(pickWd-isoOf(t)+7)%7); const out=[]; for(let i=0;i<PICK_WEEKS;i++){ out.push(ymd(d)); d=addDays(d,7); } return out; }
+function renderDatePicker(){
+  const box=modal.querySelector("#dateBox"); if(!box) return;
+  const cnt=[0,0,0,0,0,0,0,0]; const t=ymd(now); pickDates.forEach(v=>{ if(v>=t) cnt[isoOf(parseYmd(v))]++; });
+  box.querySelector("#dpkWd").innerHTML=["一","二","三","四","五","六","日"].map((w,i)=>`<button type="button" class="${pickWd===i+1?'on':''}" data-wd="${i+1}">${w}${cnt[i+1]?`<i>${cnt[i+1]}</i>`:""}</button>`).join("");
+  let html="", curM=-1, row="";
+  pickRange().forEach(v=>{ const d=parseYmd(v);
+    if(d.getMonth()!==curM){ if(row) html+=`<div class="dpk-row">${row}</div>`; row=""; curM=d.getMonth(); html+=`<div class="dpk-m">${d.getFullYear()}年${d.getMonth()+1}月</div>`; }
+    row+=`<button type="button" class="dpk-d ${pickDates.has(v)?'on':''} ${v===t?'today':''}" data-pick="${v}">${d.getMonth()+1}/${d.getDate()}</button>`; });
+  if(row) html+=`<div class="dpk-row">${row}</div>`;
+  box.querySelector("#dpkGrid").innerHTML=html;
+  const inWd=pickRange().filter(v=>pickDates.has(v)).length;
+  box.querySelector("#dpkCount").textContent=`週${WEEK_CH[pickWd].slice(1)}已選 ${inWd} 天`;
+  const all=[...pickDates].sort();
+  box.querySelector("#dpkSum").innerHTML=all.length?`共 <b>${all.length}</b> 天：`+all.map(v=>{const d=parseYmd(v);return `${d.getMonth()+1}/${d.getDate()}(${WEEK_CH[isoOf(d)].slice(1)})`;}).join("、"):"還沒選日期";
+}
 function openCourseModal(i,prefill){
   editIndex=(i==null)?null:i;
   let c;
   if(editIndex===null){ c={child:"Alyssa",title:"",recur:"weekly",day:"週一",date:ymd(cursor||now),start:"",end:"",timeNote:"",tname:"",line:"",email:"",fb:"",goal:"",paused:false}; if(prefill) c=Object.assign(c,prefill); }
   else c=Object.assign({recur:"weekly",day:"週一",date:ymd(now)},courses[editIndex]);
   recurMode=c.recur==="once"?"once":"weekly";
+  pickDates=new Set(c.recur==="once"&&(editIndex!==null||(prefill&&prefill.date))?onceDates(c):[]);
+  const pd0=c.recur==="once"&&onceDates(c).length?nextOnce(c):(c.date||ymd(now));
+  pickWd=isoOf(parseYmd(pd0));
   timeMode=c.start?"fixed":(c.timeNote?"flex":"fixed");
   const kids=[...new Set(courses.map(x=>x.child))]; ["Alyssa","Evelyn"].forEach(n=>{if(!kids.includes(n))kids.push(n);});
   const kidOpts=kids.map(k=>`<option ${c.child===k?"selected":""}>${k}</option>`).join("");
@@ -657,7 +697,12 @@ function openCourseModal(i,prefill){
     <div class="field"><label>課程名稱</label><input id="f_title" value="${esc(c.title)}" placeholder="例如：游泳訓練"></div>
     <div class="field"><label>排課方式</label><div class="seg"><button id="seg_weekly" class="${recurMode==="weekly"?"on":""}" data-recur="weekly">每週固定</button><button id="seg_once" class="${recurMode==="once"?"on":""}" data-recur="once">單次／指定日期</button></div></div>
     <div id="dayBox" class="field" style="${recurMode==="weekly"?"":"display:none"}"><label>星期</label><select id="f_day">${dayOpts}</select></div>
-    <div id="dateBox" class="field" style="${recurMode==="once"?"":"display:none"}"><label>日期</label><input id="f_date" type="date" value="${c.date||ymd(now)}"></div>
+    <div id="dateBox" class="field" style="${recurMode==="once"?"":"display:none"}"><label>日期（先選星期，再點要上課的日子，可複選）</label>
+      <div class="wdseg" id="dpkWd"></div>
+      <div class="dpk-tools"><button type="button" data-dpk="all">全選這個星期</button><button type="button" data-dpk="none">清除這個星期</button><span id="dpkCount"></span></div>
+      <div class="dpk" id="dpkGrid"></div>
+      <div class="dpk-sum" id="dpkSum"></div>
+    </div>
     <div class="field"><label>時間</label><div class="seg"><button id="seg_fixed" class="${timeMode==="fixed"?"on":""}" data-mode="fixed">固定時間</button><button id="seg_flex" class="${timeMode==="flex"?"on":""}" data-mode="flex">彈性說明</button></div></div>
     <div id="fixedBox" class="row2" style="${timeMode==="fixed"?"":"display:none"}"><div class="field"><label>開始</label><input id="f_start" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:MM 例 09:30" value="${c.start||""}"></div><div class="field"><label>結束</label><input id="f_end" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:MM 例 10:30" value="${c.end||""}"></div></div>
     <div id="flexBox" class="field" style="${timeMode==="flex"?"":"display:none"}"><label>時間說明</label><input id="f_note" value="${esc(c.timeNote)}" placeholder="例如：晚餐後 20 分鐘 / 有空再去"></div>
@@ -671,6 +716,15 @@ function openCourseModal(i,prefill){
     <div class="modal-acts">${editIndex===null?"":`<button class="btn btn-del" data-deldirect="${editIndex}">刪除</button>`}<button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-savecourse>儲存</button></div>`);
   modal.querySelectorAll("[data-recur]").forEach(b=>b.addEventListener("click",()=>{ recurMode=b.dataset.recur; modal.querySelector("#seg_weekly").classList.toggle("on",recurMode==="weekly"); modal.querySelector("#seg_once").classList.toggle("on",recurMode==="once"); modal.querySelector("#dayBox").style.display=recurMode==="weekly"?"":"none"; modal.querySelector("#dateBox").style.display=recurMode==="once"?"":"none"; }));
   modal.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{ timeMode=b.dataset.mode; applyTimeSeg(); }));
+  renderDatePicker();
+  modal.querySelector("#dateBox").addEventListener("click",e=>{
+    const b=e.target.closest("button"); if(!b) return;
+    if(b.dataset.wd){ pickWd=+b.dataset.wd; }
+    else if(b.dataset.pick){ const v=b.dataset.pick; pickDates.has(v)?pickDates.delete(v):pickDates.add(v); }
+    else if(b.dataset.dpk==="all"){ pickRange().forEach(v=>pickDates.add(v)); }
+    else if(b.dataset.dpk==="none"){ pickRange().forEach(v=>pickDates.delete(v)); }
+    else return;
+    renderDatePicker(); });
   ["#f_start","#f_end"].forEach(id=>{ const el=modal.querySelector(id); if(el) el.addEventListener("blur",()=>{ const n=normalizeTime(el.value); if(n) el.value=n; }); });
   const tsel=modal.querySelector("#f_template");
   if(tsel) tsel.addEventListener("change",()=>{ const x=courses[+tsel.value]; if(!x) return;
@@ -685,7 +739,7 @@ function openCourseModal(i,prefill){
 function saveCourse(){
   const g=id=>modal.querySelector(id);
   const obj={ cid:editIndex===null?cuid():(courses[editIndex].cid||cuid()), child:g("#f_child").value, title:(g("#f_title").value||"").trim()||"未命名課程", tname:(g("#f_tname").value||"").trim(), line:(g("#f_line").value||"").trim(), email:(g("#f_email").value||"").trim(), fb:(g("#f_fb").value||"").trim(), goal:(g("#f_goal").value||"").trim(), paused:g("#f_paused").checked };
-  if(recurMode==="once"){ obj.recur="once"; obj.date=g("#f_date").value||ymd(now); } else { obj.recur="weekly"; obj.day=g("#f_day").value; }
+  if(recurMode==="once"){ const ds=[...pickDates].sort(); if(!ds.length){ toast("請至少點選一個日期"); return; } obj.recur="once"; obj.dates=ds; obj.date=ds[0]; } else { obj.recur="weekly"; obj.day=g("#f_day").value; }
   if(timeMode==="fixed"){ const sr=g("#f_start").value.trim(), er=g("#f_end").value.trim(); const s=normalizeTime(sr), e=normalizeTime(er); if((sr&&!s)||(er&&!e)){ toast("時間格式請用 HH:MM，例如 09:30"); return; } if(s&&e&&toMin(e)<=toMin(s)){toast("結束時間要晚於開始時間");return;} if(s){obj.start=s;obj.end=e||s;} } else { obj.timeNote=(g("#f_note").value||"").trim()||"時間未定"; }
   if(editIndex===null) courses.push(obj); else courses[editIndex]=obj;
   saveData(); closeModal(); renderAll(); toast(editIndex===null?"已新增課程":"已更新課程");
