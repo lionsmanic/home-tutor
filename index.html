@@ -209,6 +209,15 @@
   .field textarea{resize:vertical;}
   .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sun);}
   .field .hint{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;}
+  .sync-url{display:flex;gap:6px;} .sync-url input{flex:1;min-width:0;font-size:12.5px !important;font-family:ui-monospace,Menlo,monospace !important;}
+  .sync-url button,.sync-go{border:1.5px solid var(--hair);background:#fff;border-radius:11px;padding:0 12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);white-space:nowrap;}
+  .sync-go{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;text-decoration:none;font-size:14px;flex:1;}
+  .sync-row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;}
+  .sync-stat{font-size:13px;padding:9px 12px;border-radius:10px;background:#F7F4EE;color:var(--muted);margin-bottom:12px;}
+  .sync-stat.ok{background:var(--sister-soft);color:#1E7A6F;} .sync-stat.err{background:var(--clash-soft);color:var(--clash);}
+  .sync-steps{font-size:13px;line-height:1.7;color:var(--ink);padding-left:18px;margin:4px 0 12px;}
+  .tbtn.synced::after{content:" ✓";color:var(--sister);}
+  .tbtn.syncerr::after{content:" !";color:var(--clash);font-weight:900;}
   .row2{display:flex;gap:10px;} .row2 .field{flex:1;min-width:0;}
   .tpick{display:flex;gap:6px;}
   .tpick input{flex:1;min-width:0;font-variant-numeric:tabular-nums;}
@@ -285,6 +294,7 @@
 
     <div class="toolbar">
       <button class="tbtn primary" data-add>＋ 新增課程</button>
+      <button class="tbtn" id="syncBtn" data-sync>📅 行事曆同步</button>
       <button class="tbtn" data-share>📤 分享到其他裝置</button>
       <button class="tbtn" data-export>⬇ 匯出備份</button>
       <button class="tbtn" data-import>⬆ 匯入</button>
@@ -351,7 +361,8 @@ function migrateOld(){ try{ const raw=localStorage.getItem(OLD_STORE_KEY); if(!r
   const keep=d.courses.filter(c=>!LEGACY_SAMPLES.has(c.child+"|"+c.title)); const ids=new Set(keep.map(c=>c.cid).filter(Boolean)); const marks={};
   Object.keys(d.marks||{}).forEach(k=>{ if(ids.has(k.split("__")[0])) marks[k]=d.marks[k]; });
   return {courses:keep,marks}; }catch(e){ return null; } }
-function saveData(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks})); }catch(e){} }
+function saveData(){ updatedAt=Date.now(); try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,updatedAt})); }catch(e){} if(typeof schedulePush==="function") schedulePush(); }
+let updatedAt=0;
 const cuid=()=>"c_"+Math.random().toString(36).slice(2,8);
 function ensureCids(){ courses.forEach(c=>{ if(!c.cid) c.cid=cuid(); }); }
 function migrateTeachers(d){
@@ -360,7 +371,7 @@ function migrateTeachers(d){
     (d.courses||[]).forEach(c=>{ if(c.teacherId&&by[c.teacherId]){ const t=by[c.teacherId]; c.tname=c.tname||t.name||""; c.line=c.line||t.line||""; c.email=c.email||t.email||""; c.fb=c.fb||t.fb||""; } delete c.teacherId; });
   }
 }
-function initData(){ const d=loadData(); if(d&&d.courses){ migrateTeachers(d); courses=d.courses; marks=d.marks||{}; } else { courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; } ensureCids(); }
+function initData(){ const d=loadData(); if(d&&d.courses){ migrateTeachers(d); courses=d.courses; marks=d.marks||{}; updatedAt=d.updatedAt||0; } else { courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; } ensureCids(); }
 
 /* ---------- 工具 ---------- */
 const DAYS=["週一","週二","週三","週四","週五","週六","週日"];
@@ -822,7 +833,7 @@ function openCourseModal(i,prefill){
 }
 function saveCourse(){
   const g=id=>modal.querySelector(id);
-  const obj={ cid:editIndex===null?cuid():(courses[editIndex].cid||cuid()), child:g("#f_child").value, title:(g("#f_title").value||"").trim()||"未命名課程", tname:(g("#f_tname").value||"").trim(), line:(g("#f_line").value||"").trim(), email:(g("#f_email").value||"").trim(), fb:(g("#f_fb").value||"").trim(), goal:(g("#f_goal").value||"").trim(), paused:g("#f_paused").checked };
+  const obj={ since:editIndex===null?ymd(now):(courses[editIndex].since||""), cid:editIndex===null?cuid():(courses[editIndex].cid||cuid()), child:g("#f_child").value, title:(g("#f_title").value||"").trim()||"未命名課程", tname:(g("#f_tname").value||"").trim(), line:(g("#f_line").value||"").trim(), email:(g("#f_email").value||"").trim(), fb:(g("#f_fb").value||"").trim(), goal:(g("#f_goal").value||"").trim(), paused:g("#f_paused").checked };
   if(recurMode==="once"){ const ds=[...pickDates].sort(); if(!ds.length){ toast("請至少點選一個日期"); return; } obj.recur="once"; obj.dates=ds; obj.date=ds[0]; } else { obj.recur="weekly"; obj.day=g("#f_day").value; }
   if(timeMode==="fixed"){ const sr=g("#f_start").value.trim(), er=g("#f_end").value.trim(); const s=normalizeTime(sr), e=normalizeTime(er); if((sr&&!s)||(er&&!e)){ toast("時間格式請用 HH:MM，例如 09:30"); return; } if(s&&e&&toMin(e)<=toMin(s)){toast("結束時間要晚於開始時間");return;} if(s){obj.start=s;obj.end=e||s;} } else { obj.timeNote=(g("#f_note").value||"").trim()||"時間未定"; }
   if(editIndex===null) courses.push(obj); else courses[editIndex]=obj;
@@ -895,10 +906,133 @@ document.addEventListener("click",e=>{
 });
 mqMobile.addEventListener("change",renderCalendar);
 
+
+/* =====================================================================
+   行事曆同步：課表 → secret GitHub Gist（.ics + .json）
+   Google 日曆／iPhone 行事曆訂閱 .ics 網址；.json 兼作雲端備份與跨裝置載入
+   token 只存在這台瀏覽器（獨立 key），不會進入匯出／分享連結
+   ===================================================================== */
+const SYNC_KEY="home-tutor-sync-v1", GIST_DESC="home-tutor 課表同步（請勿刪除）", ICS_FILE="home-tutor.ics", JSON_FILE="home-tutor.json";
+let sync=(()=>{ try{ return JSON.parse(localStorage.getItem(SYNC_KEY))||null; }catch(e){ return null; } })();
+let syncState={busy:false,last:0,err:""}, pushTimer=null;
+function saveSync(){ try{ if(sync) localStorage.setItem(SYNC_KEY,JSON.stringify(sync)); else localStorage.removeItem(SYNC_KEY); }catch(e){} }
+function icsUrl(){ return sync?`https://gist.githubusercontent.com/${sync.login}/${sync.gistId}/raw/${ICS_FILE}`:""; }
+async function gh(path,opt={}){
+  const r=await fetch("https://api.github.com"+path,{...opt,headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+(opt.token||sync.token),"X-GitHub-Api-Version":"2022-11-28",...(opt.body?{"Content-Type":"application/json"}:{})}});
+  if(!r.ok){ const t=r.status===401?"token 無效或已過期":r.status===403||r.status===404?"token 沒有 gist 權限，或找不到同步檔":"GitHub 回應 "+r.status; throw new Error(t); }
+  return r.status===204?null:r.json();
+}
+
+/* ---- 產生 .ics ---- */
+const icsEsc=t=>String(t||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+function icsFold(line){ const enc=new TextEncoder(); if(enc.encode(line).length<=74) return line; let out="",cur="",n=0;
+  for(const ch of line){ const b=enc.encode(ch).length; if(n+b>74){ out+=cur+"\r\n "; cur=""; n=1; } cur+=ch; n+=b; } return out+cur; }
+const icsD=ds=>ds.replace(/-/g,""), icsDT=(ds,hm)=>icsD(ds)+"T"+hm.replace(":","")+"00";
+const BYDAY={1:"MO",2:"TU",3:"WE",4:"TH",5:"FR",6:"SA",7:"SU"};
+function firstOnOrAfter(ds,isos){ let d=parseYmd(ds); for(let i=0;i<7;i++){ if(isos.includes(isoOf(d))) return ymd(d); d=addDays(d,1); } return ds; }
+function buildICS(){
+  const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//lionsmanic//home-tutor//ZH","CALSCALE:GREGORIAN","METHOD:PUBLISH",
+    "X-WR-CALNAME:Alyssa & Evelyn 課表","X-WR-TIMEZONE:Asia/Taipei","REFRESH-INTERVAL;VALUE=DURATION:PT1H","X-PUBLISHED-TTL:PT1H",
+    "BEGIN:VTIMEZONE","TZID:Asia/Taipei","BEGIN:STANDARD","DTSTART:19700101T000000","TZOFFSETFROM:+0800","TZOFFSETTO:+0800","TZNAME:CST","END:STANDARD","END:VTIMEZONE"];
+  const desc=c=>icsEsc([c.child, c.tname?"老師："+c.tname:"", c.goal?"重點："+c.goal:"", c.start?"":"時間："+(c.timeNote||"彈性")].filter(Boolean).join("\n"));
+  const sum=(c,leave)=>icsEsc(`${kidInit(c)} ${c.title}${c.start?"":"（"+(c.timeNote||"彈性")+"）"}${leave?"（請假）":""}`);
+  const ev=(uid,c,ds,extra=[])=>{ L.push("BEGIN:VEVENT","UID:"+uid+"@home-tutor","DTSTAMP:"+stamp);
+    if(c.start&&c.end) L.push("DTSTART;TZID=Asia/Taipei:"+icsDT(ds,c.start),"DTEND;TZID=Asia/Taipei:"+icsDT(ds,c.end));
+    else L.push("DTSTART;VALUE=DATE:"+icsD(ds),"DTEND;VALUE=DATE:"+icsD(ymd(addDays(parseYmd(ds),1))),"TRANSP:TRANSPARENT");
+    L.push("SUMMARY:"+sum(c),"DESCRIPTION:"+desc(c),...extra,"END:VEVENT"); };
+  courses.forEach(c=>{
+    if(c.paused) return;
+    if(c.recur==="once"){ onceDates(c).forEach(ds=>{ const m=getMark(c,ds); if(m&&m.leave) return; ev(c.cid+"-"+icsD(ds),c,ds); }); return; }
+    const isos=c.day==="週末"?[6,7]:[DAY_ISO[c.day]||1];
+    const start=firstOnOrAfter(c.since||ymd(mondayOf(now)),isos);
+    const ex=Object.keys(marks).filter(k=>k.startsWith(c.cid+"__")&&marks[k].leave).map(k=>k.split("__")[1]).filter(ds=>ds>=start)
+      .map(ds=>c.start?"EXDATE;TZID=Asia/Taipei:"+icsDT(ds,c.start):"EXDATE;VALUE=DATE:"+icsD(ds));
+    ev(c.cid,c,start,["RRULE:FREQ=WEEKLY;BYDAY="+isos.map(i=>BYDAY[i]).join(","),...ex]);
+  });
+  L.push("END:VCALENDAR");
+  return L.map(icsFold).join("\r\n")+"\r\n";
+}
+function stampSince(){ let ch=false; courses.forEach(c=>{ if(c.recur!=="once"&&!c.since){ c.since=ymd(mondayOf(now)); ch=true; } }); if(ch){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,updatedAt})); }catch(e){} } }
+function payloadFiles(){ stampSince(); return { [ICS_FILE]:{content:buildICS()}, [JSON_FILE]:{content:JSON.stringify({courses,marks,updatedAt},null,1)} }; }
+
+/* ---- 上傳 ---- */
+function schedulePush(){ if(!sync) return; clearTimeout(pushTimer); pushTimer=setTimeout(pushNow,1500); }
+async function pushNow(){
+  if(!sync) return; syncState.busy=true; paintSync();
+  try{ await gh("/gists/"+sync.gistId,{method:"PATCH",body:JSON.stringify({files:payloadFiles()})}); syncState={busy:false,last:Date.now(),err:""}; sync.lastPush=updatedAt; saveSync(); }
+  catch(e){ syncState={busy:false,last:syncState.last,err:e.message||"上傳失敗"}; }
+  paintSync();
+}
+function paintSync(){
+  const b=document.getElementById("syncBtn"); if(b){ b.classList.toggle("synced",!!sync&&!syncState.err); b.classList.toggle("syncerr",!!sync&&!!syncState.err); }
+  const st=modal&&modal.querySelector("#syncStat"); if(st) st.outerHTML=syncStatHTML();
+}
+function syncStatHTML(){
+  if(!sync) return `<div id="syncStat" class="sync-stat">尚未啟用</div>`;
+  if(syncState.busy) return `<div id="syncStat" class="sync-stat">☁️ 上傳中…</div>`;
+  if(syncState.err) return `<div id="syncStat" class="sync-stat err">⚠️ ${syncState.err}</div>`;
+  const t=syncState.last?new Date(syncState.last):null;
+  return `<div id="syncStat" class="sync-stat ok">✅ 已啟用${t?` · 最後上傳 ${pad(t.getHours())}:${pad(t.getMinutes())}`:""}（每次存檔自動更新）</div>`;
+}
+
+/* ---- 開啟時：雲端比較新就自動載入（別台裝置改過） ---- */
+async function pullOnLoad(){
+  if(!sync) return;
+  try{ const g=await gh("/gists/"+sync.gistId); const f=g.files&&g.files[JSON_FILE]; if(!f) return;
+    const d=JSON.parse(f.truncated?await (await fetch(f.raw_url)).text():f.content);
+    if(d&&d.courses&&(d.updatedAt||0)>(updatedAt||0)){ courses=d.courses; marks=d.marks||{}; updatedAt=d.updatedAt; ensureCids();
+      try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,updatedAt})); }catch(e){} renderAll(); toast("☁️ 已載入其他裝置的最新課表"); }
+    else if((updatedAt||0)>(sync.lastPush||0)) pushNow();
+    syncState.last=syncState.last||Date.now(); paintSync();
+  }catch(e){ syncState.err=e.message; paintSync(); }
+}
+
+/* ---- 設定視窗 ---- */
+function openSync(){
+  if(!sync){ openModal(`<h2>📅 同步到 Google 日曆／iPhone 行事曆</h2>
+    <p class="field hint" style="margin-top:-4px">課表會自動轉成行事曆檔，存到你 GitHub 帳號的「secret gist」（不公開、搜尋不到，但知道網址的人可讀）。Google 日曆和 iPhone 訂閱那個網址，之後每次在這裡存檔，日曆都會跟著更新（含刪除、請假）。</p>
+    <ol class="sync-steps"><li>到 <a href="https://github.com/settings/tokens/new?scopes=gist&description=home-tutor%20%E8%AA%B2%E8%A1%A8%E5%90%8C%E6%AD%A5" target="_blank" rel="noopener">GitHub 建立 token</a>，只勾 <b>gist</b>，Expiration 可選 No expiration</li><li>按 Generate token，複製 <code>ghp_</code> 開頭那串</li><li>貼到下面，按「啟用」</li></ol>
+    <div class="field"><label>GitHub token</label><input id="syncTok" type="password" autocomplete="off" placeholder="ghp_…"><div class="hint">token 只存在這台裝置的瀏覽器，不會出現在匯出備份或分享連結裡。換裝置時再貼一次同一個 token，就會自動接上同一份課表。</div></div>
+    <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" id="syncGo">啟用</button></div>`);
+    modal.querySelector("#syncGo").addEventListener("click",connectSync); return; }
+  const u=icsUrl(), webcal=u.replace(/^https:/,"webcal:");
+  openModal(`<h2>📅 行事曆同步</h2>${syncStatHTML()}
+    <div class="field"><label>訂閱網址（.ics）</label><div class="sync-url"><input id="syncUrl" readonly value="${u}"><button id="syncCopy">複製</button></div></div>
+    <div class="field"><label>加到行事曆（每台裝置／帳號只要做一次）</label>
+      <div class="sync-row"><a class="sync-go" href="${webcal}">🍎 加到 iPhone 行事曆</a><a class="sync-go" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}">📆 加到 Google 日曆</a></div>
+      <div class="hint">iPhone：請用 iPhone 的 Safari 開這頁再按，跳出「訂閱」確認即可；更新頻率可到「設定 › 行事曆 › 帳號 › 取得新資料」調整。<br>Google：若按鈕沒反應，到電腦版 Google 日曆 › 其他日曆「＋」› 「透過網址新增」，貼上上面的網址。Google 更新訂閱日曆較慢，改動可能要幾小時才出現。<br>行事曆上是唯讀的，要改課請回到這頁。</div></div>
+    <div class="modal-acts"><button class="btn btn-del" id="syncOff">停用</button><button class="btn btn-cancel" id="syncNow">立即上傳</button><button class="btn btn-save" data-close>完成</button></div>`);
+  modal.querySelector("#syncCopy").addEventListener("click",()=>copyText(u).then(()=>toast("✅ 已複製訂閱網址")));
+  modal.querySelector("#syncNow").addEventListener("click",pushNow);
+  modal.querySelector("#syncOff").addEventListener("click",()=>{ sync=null; saveSync(); syncState={busy:false,last:0,err:""}; paintSync(); closeModal(); toast("已停用同步（雲端檔案保留，行事曆不再更新）"); });
+}
+async function connectSync(){
+  const tok=(modal.querySelector("#syncTok").value||"").trim(); if(!tok){ toast("請先貼上 token"); return; }
+  const btn=modal.querySelector("#syncGo"); btn.disabled=true; btn.textContent="連線中…";
+  try{
+    const me=await gh("/user",{token:tok});
+    let found=null;
+    for(let page=1;page<=5&&!found;page++){ const list=await gh(`/gists?per_page=100&page=${page}`,{token:tok}); found=list.find(g=>g.description===GIST_DESC&&g.files[ICS_FILE]); if(list.length<100) break; }
+    if(found){
+      sync={token:tok,login:me.login,gistId:found.id,lastPush:0}; saveSync();
+      openModal(`<h2>找到雲端課表</h2><p class="field hint">你的 GitHub 已經有一份同步課表（可能是在別台裝置設定的）。要用哪一份？</p>
+        <div class="modal-acts" style="flex-direction:column"><button class="btn btn-save" id="useCloud">載入雲端課表（覆蓋這台）</button><button class="btn btn-cancel" id="useLocal">用這台的課表覆蓋雲端</button></div>`);
+      modal.querySelector("#useCloud").addEventListener("click",async()=>{ updatedAt=0; await pullOnLoad(); openSync(); });
+      modal.querySelector("#useLocal").addEventListener("click",async()=>{ await pushNow(); openSync(); });
+      return;
+    }
+    const g=await gh("/gists",{token:tok,method:"POST",body:JSON.stringify({description:GIST_DESC,public:false,files:payloadFiles()})});
+    sync={token:tok,login:me.login,gistId:g.id,lastPush:updatedAt}; saveSync(); syncState={busy:false,last:Date.now(),err:""}; paintSync(); openSync(); toast("✅ 同步已啟用");
+  }catch(e){ btn.disabled=false; btn.textContent="啟用"; toast("⚠️ "+(e.message||"連線失敗")); }
+}
+document.addEventListener("click",e=>{ if(e.target.closest("[data-sync]")) openSync(); });
+
 /* init */
 document.getElementById("todayLine").textContent=`📅 今天 ${now.getMonth()+1}/${now.getDate()} ${["週日","週一","週二","週三","週四","週五","週六"][now.getDay()]}`;
 initData();
 renderAll();
+paintSync(); pullOnLoad();
 const _shared=readSharedFromHash();
 if(_shared){ pendingShared=_shared; promptShared(_shared); }
 </script>
