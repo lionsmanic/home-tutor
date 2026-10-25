@@ -56,49 +56,78 @@
   .navlabel{font-weight:900;font-size:15px;min-width:118px;text-align:center;}
   .navtoday{border:1px solid var(--hair);background:#fff;border-radius:9px;padding:7px 12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);}
 
-  .cal-wrap{overflow-x:auto;background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);padding:8px;}
-  .cal{display:flex;min-width:660px;}
-  .col{flex:1;min-width:84px;}
-  .col.axis{flex:0 0 44px;min-width:44px;}
-  .col-head{min-height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:13px;border-bottom:2px solid var(--hair);line-height:1.15;}
-  .col-head small{font-weight:500;font-size:10px;color:var(--muted);}
-  .col-head.now{color:var(--sun);} .col-head.now small{color:var(--sun);}
-  .col-body{position:relative;background-image:linear-gradient(var(--hair) 1px,transparent 1px);cursor:copy;}
-  .col.axis .col-body{background:none;cursor:default;}
-  .hr{position:absolute;left:0;font-size:11px;color:var(--muted);transform:translateY(-7px);font-variant-numeric:tabular-nums;}
-  .ev{position:absolute;border:none;border-radius:9px;padding:4px 5px;text-align:left;cursor:pointer;overflow:hidden;font-family:inherit;color:#fff;display:flex;flex-direction:column;gap:1px;box-shadow:0 2px 6px rgba(0,0,0,.12);}
-  .ev.alyssa{background:var(--alyssa);} .ev.sister{background:var(--sister);}
-  .ev.clash{outline:2px dashed #fff;outline-offset:-3px;}
-  .ev.leave{opacity:.6;} .ev.leave .ev-title{text-decoration:line-through;}
-  .ev-badges{position:absolute;top:2px;right:3px;display:flex;gap:2px;}
-  .ev-b{font-size:9px;background:rgba(255,255,255,.92);color:var(--ink);border-radius:4px;padding:0 3px;font-weight:700;line-height:1.5;}
-  .ev-b.clash{background:var(--clash);color:#fff;} .ev-b.leave{background:#fff;color:var(--clash);}
-  .ev-t{font-size:10px;font-weight:700;opacity:.92;font-variant-numeric:tabular-nums;}
-  .ev-title{font-size:11.5px;font-weight:700;line-height:1.2;white-space:normal;overflow-wrap:anywhere;}
+  /* 週曆（電腦） */
+  .wk-wrap{overflow-x:auto;background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);}
+  .wk{display:grid;grid-template-columns:52px repeat(7,minmax(100px,1fr));min-width:760px;}
+  .wk-h{position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--hair);padding:10px 4px 8px;text-align:center;line-height:1.1;}
+  .wk-h .wd{display:block;font-size:12px;font-weight:700;color:var(--muted);}
+  .wk-h .dn{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;margin-top:3px;font-size:18px;font-weight:900;border-radius:999px;font-variant-numeric:tabular-nums;}
+  .wk-h.now .wd{color:var(--sun);} .wk-h.now .dn{background:var(--sun);color:#fff;}
+  .wk-h.we .wd{color:#A8A3B4;}
+  .wk-corner{border-bottom:1px solid var(--hair);}
+  .wk-allL{font-size:11px;color:var(--muted);font-weight:700;padding:8px 4px;text-align:right;border-bottom:1px solid var(--hair);}
+  .wk-all{border-bottom:1px solid var(--hair);border-left:1px solid var(--hair);padding:5px 4px;display:flex;flex-direction:column;gap:4px;min-height:34px;}
+  .wk-all.now{background:#FFFAF0;}
+  .allchip{border:none;border-left:3px solid;border-radius:6px;padding:3px 6px;font-size:11.5px;font-weight:700;text-align:left;cursor:pointer;font-family:inherit;color:var(--ink);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+  .allchip.alyssa{background:var(--alyssa-soft);border-color:var(--alyssa);} .allchip.sister{background:var(--sister-soft);border-color:var(--sister);}
+  .allchip.leave{opacity:.55;text-decoration:line-through;}
+  .wk-axis{position:relative;}
+  .hr{position:absolute;right:8px;font-size:11px;color:var(--muted);transform:translateY(-7px);font-variant-numeric:tabular-nums;}
+  .wk-col{position:relative;border-left:1px solid var(--hair);cursor:copy;
+    background-image:linear-gradient(var(--hair) 1px,transparent 1px),linear-gradient(#F6F2EA 1px,transparent 1px);}
+  .wk-col.we{background-color:#FCFAF6;} .wk-col.now{background-color:#FFFAF0;}
+  .nowline{position:absolute;left:0;right:0;height:2px;background:var(--clash);z-index:2;pointer-events:none;}
+  .nowline::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--clash);}
+  .ev{position:absolute;border:none;border-left:4px solid;border-radius:8px;padding:4px 6px 4px 7px;text-align:left;cursor:pointer;overflow:hidden;font-family:inherit;color:var(--ink);display:flex;flex-direction:column;gap:1px;z-index:1;transition:box-shadow .15s;}
+  .ev:hover{box-shadow:0 4px 12px rgba(60,40,20,.16);z-index:2;}
+  .ev.alyssa{background:var(--alyssa-soft);border-color:var(--alyssa);} .ev.sister{background:var(--sister-soft);border-color:var(--sister);}
+  .ev.alyssa .ev-t{color:#B5492F;} .ev.sister .ev-t{color:#1E7A6F;}
+  .ev.clash{box-shadow:inset 0 0 0 1.5px var(--clash);}
+  .ev.leave{background:repeating-linear-gradient(135deg,#F4F2EE 0 6px,#ECE9E3 6px 12px);border-color:#C9C4BA;}
+  .ev.leave .ev-title,.ev.leave .ev-t{text-decoration:line-through;color:var(--muted);}
+  .ev-top{display:flex;align-items:flex-start;gap:3px;}
+  .ev-top .ev-t{flex:1;min-width:0;}
+  .ev-badges{display:flex;gap:2px;flex:0 0 auto;}
+  .ev-b{font-size:9.5px;background:#fff;color:var(--ink);border-radius:4px;padding:0 3px;font-weight:700;line-height:1.5;box-shadow:0 0 0 1px var(--hair);}
+  .ev-b.clash{background:var(--clash);color:#fff;box-shadow:none;} .ev-b.leave{color:var(--clash);}
+  .ev.narrow{padding:3px 4px 3px 5px;} .ev.narrow .ev-title{font-size:11px;}
+  .ev-t{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .ev-title{font-size:12px;font-weight:800;line-height:1.25;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .ev-who{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-  .flexbar{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
-  .flexbar .lbl{font-size:13px;color:var(--muted);font-weight:700;}
-  .flexchip{border:1px dashed var(--hair);background:var(--card);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--ink);}
-  .flexchip.leave{opacity:.55;text-decoration:line-through;}
-  .flexchip .d{color:var(--muted);}
-  .flexchip.alyssa{border-color:var(--alyssa-line);} .flexchip.sister{border-color:var(--sister-line);}
-
+  /* 月曆 */
   .month{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
-  .mhead{display:grid;grid-template-columns:repeat(7,1fr);background:#fbf6ee;}
-  .mhcell{padding:7px 0;text-align:center;font-weight:700;font-size:12px;color:var(--muted);}
+  .mhead{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--hair);}
+  .mhcell{padding:9px 0;text-align:center;font-weight:700;font-size:12px;color:var(--muted);}
+  .mhcell.we{color:#A8A3B4;}
   .mgrid{display:grid;grid-template-columns:repeat(7,1fr);}
-  .mcell{min-height:88px;border-right:1px solid var(--hair);border-top:1px solid var(--hair);background:#fff;text-align:left;padding:4px;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;gap:2px;}
+  .mcell{min-height:96px;border:none;border-right:1px solid var(--hair);border-bottom:1px solid var(--hair);background:#fff;text-align:left;padding:5px;cursor:pointer;font-family:inherit;color:var(--ink);display:flex;flex-direction:column;gap:3px;min-width:0;}
   .mcell:nth-child(7n){border-right:none;}
-  .mcell.dim{background:#faf8f4;}
-  .mc-d{font-size:12px;font-weight:700;width:20px;height:20px;display:flex;align-items:center;justify-content:center;}
-  .mcell.dim .mc-d{color:#c2bdb2;}
-  .mcell.today .mc-d{background:var(--sun);color:#fff;border-radius:50%;}
-  .mc-chip{font-size:10.5px;line-height:1.35;padding:1px 5px;border-radius:5px;color:#fff;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-  .mc-chip.alyssa{background:var(--alyssa);} .mc-chip.sister{background:var(--sister);}
-  .mc-chip.clash{outline:1.5px solid var(--clash);outline-offset:-1px;}
+  .mcell:nth-last-child(-n+7){border-bottom:none;}
+  .mcell:hover{background:#FDFBF7;}
+  .mcell.we{background:#FCFAF6;}
+  .mcell.dim{background:#FAF8F4;} .mcell.dim .mc-d{color:#C2BDB2;} .mcell.dim .mc-chip{opacity:.55;}
+  .mcell.today{background:#FFFAF0;}
+  .mc-d{font-size:12.5px;font-weight:800;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;font-variant-numeric:tabular-nums;}
+  .mcell.today .mc-d{background:var(--sun);color:#fff;border-radius:999px;}
+  .mc-chip{font-size:11px;line-height:1.4;padding:1px 5px;border-left:3px solid;border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:600;}
+  .mc-chip b{font-weight:700;font-variant-numeric:tabular-nums;margin-right:3px;}
+  .mc-chip.alyssa{background:var(--alyssa-soft);border-color:var(--alyssa);} .mc-chip.sister{background:var(--sister-soft);border-color:var(--sister);}
+  .mc-chip.alyssa b{color:#B5492F;} .mc-chip.sister b{color:#1E7A6F;}
+  .mc-chip.clash{box-shadow:inset 0 0 0 1px var(--clash);}
   .mc-chip.leave{opacity:.5;text-decoration:line-through;}
-  .mc-more{font-size:10px;color:var(--muted);padding-left:3px;}
-  @media(max-width:560px){ .mcell{min-height:58px;} .mc-chip{font-size:0;line-height:0;padding:0;height:5px;border-radius:3px;} .mhcell{font-size:11px;} }
+  .mc-more{font-size:10.5px;color:var(--muted);padding-left:4px;font-weight:700;}
+  .mc-dots{display:none;}
+  @media(max-width:560px){
+    .mcell{min-height:56px;padding:4px 2px;align-items:center;}
+    .mc-d{align-self:center;font-size:12px;}
+    .mc-chip,.mc-more{display:none;}
+    .mc-dots{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;max-width:30px;}
+    .mc-dot{width:6px;height:6px;border-radius:50%;}
+    .mc-dot.alyssa{background:var(--alyssa);} .mc-dot.sister{background:var(--sister);}
+    .mc-dot.leave{background:#CFCAC0;} .mc-dot.clash{box-shadow:0 0 0 1.5px #fff,0 0 0 2.5px var(--clash);}
+    .mhcell{font-size:11px;}
+  }
 
   .agz-day{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;}
   .agz-h{padding:9px 14px;font-weight:900;font-size:15px;background:#fbf6ee;border-bottom:1px solid var(--hair);display:flex;justify-content:space-between;align-items:center;}
@@ -116,6 +145,13 @@
   .agz-cev small{font-size:11px;opacity:.85;}
   .agz-cev .agz-tag{align-self:flex-start;margin-top:3px;background:rgba(255,255,255,.9);color:var(--clash);}
   .agz-day.now .agz-h{background:var(--sun-soft);color:#9A6611;}
+  .agz-offs{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;}
+  .agz-off{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-bottom:1px solid var(--hair);font-size:14px;}
+  .agz-off:last-child{border-bottom:none;}
+  .agz-off b{font-weight:800;min-width:78px;}
+  .agz-off.now{background:var(--sun-soft);color:#9A6611;}
+  .agz-off span{flex:1;color:var(--muted);font-size:13px;}
+  .agz-off .agz-add{padding:3px 10px;}
   .agz-ev{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:none;background:none;border-bottom:1px solid var(--hair);padding:11px 14px;cursor:pointer;font-family:inherit;color:var(--ink);}
   .agz-ev:last-child{border-bottom:none;}
   .agz-ev.leave .agz-body b{text-decoration:line-through;opacity:.7;}
@@ -218,7 +254,7 @@
     <div class="section-head"><h2>☀️ 今天的課</h2><span class="count" id="todayCount"></span></div>
     <div id="today"></div>
 
-    <div class="section-head"><h2>🗓️ 課表</h2><span class="count">週＝每週固定 · 月＝指定日期(試上/單次)</span></div>
+    <div class="section-head"><h2>🗓️ 課表</h2><span class="count">點空白處可直接加課 · 點課程看詳情／請假</span></div>
     <div id="calendar"></div>
 
     <div class="section-head"><h2>📚 課程清單</h2><span class="count">編輯／刪除／請假</span></div>
@@ -377,39 +413,45 @@ function layoutDay(evs){
 }
 function weekDates(){ const ws=mondayOf(cursor); return Array.from({length:7},(_,i)=>addDays(ws,i)); }
 function renderWeekGrid(){
-  const dates=weekDates();
-  const loH=8,hiH=22,hourPx=54,top0=loH*60,bodyH=(hiH-loH)*hourPx;
-  let axis=""; for(let h=loH;h<=hiH;h++)axis+=`<div class="hr" style="top:${(h-loH)*hourPx}px">${pad(h)}:00</div>`;
-  let cols="", flexItems=[];
+  const dates=weekDates(), hourPx=52;
+  // 依本週實際的課自動調整時間範圍（預設 08–20，有更早／更晚的課就自動延伸）
+  let lo=8*60, hi=20*60;
+  dates.forEach(d=>courses.forEach(c=>{ if(occursOnDate(c,d)&&c.start&&c.end){ lo=Math.min(lo,toMin(c.start)); hi=Math.max(hi,toMin(c.end)); } }));
+  const loH=Math.floor(lo/60), hiH=Math.min(24,Math.ceil(hi/60)), top0=loH*60, bodyH=(hiH-loH)*hourPx;
+  let heads=`<div class="wk-corner wk-h"></div>`, all=`<div class="wk-allL">彈性</div>`, cols="", hasAll=false;
+  let axis=""; for(let h=loH+1;h<hiH;h++)axis+=`<div class="hr" style="top:${(h-loH)*hourPx}px">${pad(h)}:00</div>`;
+  axis=`<div class="hr" style="top:7px">${pad(loH)}:00</div>`+axis;
   dates.forEach(d=>{
-    const ds=ymd(d), dayName=WEEK_CH[isoOf(d)], {set}=conflictsOn(d);
+    const ds=ymd(d), dayName=WEEK_CH[isoOf(d)], iso=isoOf(d), {set}=conflictsOn(d);
+    const st=(sameYmd(d,now)?" now":"")+(iso>=6?" we":"");
+    heads+=`<div class="wk-h${st}"><span class="wd">${dayName}</span><span class="dn">${d.getDate()}</span></div>`;
+    const flex=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)&&!(o.c.start&&o.c.end));
+    if(flex.length) hasAll=true;
+    all+=`<div class="wk-all${sameYmd(d,now)?' now':''}">`+flex.map(o=>{const m=getMark(o.c,ds);return `<button class="allchip ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}" title="${esc(o.c.title)}">${o.c.timeNote?o.c.timeNote+" · ":""}${o.c.title}</button>`;}).join("")+`</div>`;
     const occ=layoutDay(courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)&&o.c.start&&o.c.end).map(o=>({...o,s:toMin(o.c.start),e:toMin(o.c.end)})));
     let blocks="";
     occ.forEach(o=>{
       const w=100/o.ncols,left=o.col*w;
-      let top=(o.s-top0)/60*hourPx, ht=(o.e-o.s)/60*hourPx-3;
-      if(top<0){ht+=top;top=0;} if(top+ht>bodyH)ht=bodyH-top; if(ht<36)ht=36;
+      let top=(o.s-top0)/60*hourPx+1, ht=Math.max(28,(o.e-o.s)/60*hourPx-3);
       const m=getMark(o.c,ds);
       const cls=childClass(o.c)+(set.has(o.i)?" clash":"")+(m&&m.leave?" leave":"");
-      blocks+=`<button class="ev ${cls}" data-detail="${o.i}" data-date="${ds}" style="top:${top}px;height:${ht}px;left:calc(${left}% + 2px);width:calc(${w}% - 4px)">${evBadges(o.c,ds,set.has(o.i))}<span class="ev-t">${o.c.start}</span><span class="ev-title">${o.c.title}</span></button>`;
+      const who=ht>=62?`<span class="ev-who">${o.c.child}${o.c.tname?" · "+o.c.tname:""}</span>`:"";
+      blocks+=`<button class="ev ${cls}${o.ncols>1?' narrow':''}" data-detail="${o.i}" data-date="${ds}" title="${esc(o.c.start+"–"+o.c.end+" "+o.c.title+"（"+o.c.child+"）")}" style="top:${top}px;height:${ht}px;left:calc(${left}% + 3px);width:calc(${w}% - 6px)"><span class="ev-top"><span class="ev-t">${o.ncols>1?o.c.start:o.c.start+"–"+o.c.end}</span>${evBadges(o.c,ds,set.has(o.i))}</span><span class="ev-title">${o.c.title}</span>${who}</button>`;
     });
-    courses.forEach((c,i)=>{ if(occursOnDate(c,d)&&!c.start) flexItems.push({c,i,d}); });
-    const nw=sameYmd(d,now)?"now":"";
-    cols+=`<div class="col"><div class="col-head ${nw}">${dayName}<small>${d.getMonth()+1}/${d.getDate()}</small></div><div class="col-body" data-day="${dayName}" data-top0="${top0}" data-hourpx="${hourPx}" style="height:${bodyH}px;background-size:100% ${hourPx}px">${blocks}</div></div>`;
+    if(sameYmd(d,now)){ const nm=now.getHours()*60+now.getMinutes(); if(nm>=top0&&nm<=hiH*60) blocks+=`<div class="nowline" style="top:${(nm-top0)/60*hourPx}px"></div>`; }
+    cols+=`<div class="wk-col${st}" data-day="${dayName}" data-top0="${top0}" data-hourpx="${hourPx}" style="height:${bodyH}px;background-size:100% ${hourPx}px,100% ${hourPx}px;background-position:0 0,0 ${hourPx/2}px">${blocks}</div>`;
   });
-  let flexbar="";
-  if(flexItems.length) flexbar=`<div class="flexbar"><span class="lbl">彈性／無固定時間：</span>`+flexItems.map(o=>{const ds=ymd(o.d),m=getMark(o.c,ds);return `<button class="flexchip ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="d">${o.c.recur==="once"?(o.d.getMonth()+1)+"/"+o.d.getDate():WEEK_CH[isoOf(o.d)]}</span> ${o.c.title} · ${o.c.child}</button>`;}).join("")+`</div>`;
-  return `<div class="cal-wrap"><div class="cal"><div class="col axis"><div class="col-head"></div><div class="col-body" style="height:${bodyH}px">${axis}</div></div>${cols}</div></div>`+flexbar;
+  return `<div class="wk-wrap"><div class="wk">${heads}${hasAll?all:""}<div class="wk-axis" style="height:${bodyH}px">${axis}</div>${cols}</div></div>`;
 }
 function agzRow(o,ds){
   const c=o.c, m=getMark(c,ds); let tag="";
   if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
-  return `<button class="agz-ev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="agz-time">${displayTime(c)}</span><span class="agz-body"><b>${c.title}</b><small>${c.child} · ${teacherName(c)}</small></span>${tag}</button>`;
+  return `<button class="agz-ev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="agz-time">${displayTime(c)}</span><span class="agz-body"><b>${c.title}</b><small>${c.child}${c.tname?" · "+c.tname:""}</small></span>${tag}</button>`;
 }
 function agzClashCard(o,ds){
   const c=o.c, m=getMark(c,ds); let tag="";
   if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
-  return `<button class="agz-cev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="cev-who">${c.child}</span><span class="cev-t">${displayTime(c)}</span><span class="cev-ti">${c.title}</span><small>${teacherName(c)}</small>${tag}</button>`;
+  return `<button class="agz-cev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="cev-who">${c.child}</span><span class="cev-t">${displayTime(c)}</span><span class="cev-ti">${c.title}</span>${c.tname?`<small>${c.tname}</small>`:""}${tag}</button>`;
 }
 function dayItemsHtml(d,ds){
   const occ=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d));
@@ -430,14 +472,16 @@ function dayItemsHtml(d,ds){
   return html;
 }
 function renderWeekAgenda(){
-  let html="";
+  let html="", offs=[];
+  const flushOffs=()=>{ if(offs.length){ html+=`<div class="agz-offs">${offs.join("")}</div>`; offs=[]; } };
   weekDates().forEach(d=>{
-    const ds=ymd(d), dayName=WEEK_CH[isoOf(d)];
-    const hasAny=courses.some(c=>occursOnDate(c,d));
-    const head=`<div class="agz-h"><span>${dayName} ${d.getMonth()+1}/${d.getDate()}${sameYmd(d,now)?' · 今天':''}</span><button class="agz-add" data-addday="${dayName}">＋ 加課</button></div>`;
-    const body=hasAny?dayItemsHtml(d,ds):`<div class="agz-empty">這天沒課，點「＋ 加課」新增；點任一堂課可編輯或刪除</div>`;
-    html+=`<div class="agz-day ${sameYmd(d,now)?'now':''}">${head}${body}</div>`;
+    const ds=ymd(d), dayName=WEEK_CH[isoOf(d)], isNow=sameYmd(d,now);
+    const label=`${dayName} ${d.getMonth()+1}/${d.getDate()}${isNow?' · 今天':''}`;
+    if(!courses.some(c=>occursOnDate(c,d))){ offs.push(`<div class="agz-off ${isNow?'now':''}"><b>${label}</b><span>沒課</span><button class="agz-add" data-addday="${dayName}">＋</button></div>`); return; }
+    flushOffs();
+    html+=`<div class="agz-day ${isNow?'now':''}"><div class="agz-h"><span>${label}</span><button class="agz-add" data-addday="${dayName}">＋ 加課</button></div>${dayItemsHtml(d,ds)}</div>`;
   });
+  flushOffs();
   return html;
 }
 function renderMonth(){
@@ -447,12 +491,14 @@ function renderMonth(){
   let cells="";
   for(let i=0;i<rows*7;i++){
     const d=addDays(start,i), ds=ymd(d), inM=d.getMonth()===m, {set}=conflictsOn(d);
-    const occ=courses.map((c,idx)=>({c,idx})).filter(o=>occursOnDate(o.c,d));
-    let chips=occ.slice(0,3).map(o=>{const mk=getMark(o.c,ds);return `<span class="mc-chip ${childClass(o.c)} ${set.has(o.idx)?'clash':''} ${mk&&mk.leave?'leave':''}">${o.c.start?o.c.start+" ":""}${o.c.title}</span>`;}).join("");
-    if(occ.length>3) chips+=`<span class="mc-more">+${occ.length-3}</span>`;
-    cells+=`<button class="mcell ${inM?'':'dim'} ${sameYmd(d,now)?'today':''}" data-dayopen="${ds}"><span class="mc-d">${d.getDate()}</span>${chips}</button>`;
+    const occ=courses.map((c,idx)=>({c,idx})).filter(o=>occursOnDate(o.c,d)).sort((a,b)=>sortKey(a.c)-sortKey(b.c));
+    const st=o=>{const mk=getMark(o.c,ds);return `${childClass(o.c)} ${set.has(o.idx)?'clash':''} ${mk&&mk.leave?'leave':''}`;};
+    let chips=occ.slice(0,3).map(o=>`<span class="mc-chip ${st(o)}">${o.c.start?`<b>${o.c.start}</b>`:""}${o.c.title}</span>`).join("");
+    if(occ.length>3) chips+=`<span class="mc-more">還有 ${occ.length-3} 堂</span>`;
+    const dots=occ.length?`<span class="mc-dots">`+occ.slice(0,6).map(o=>`<i class="mc-dot ${st(o)}"></i>`).join("")+`</span>`:"";
+    cells+=`<button class="mcell ${inM?'':'dim'} ${isoOf(d)>=6?'we':''} ${sameYmd(d,now)?'today':''}" data-dayopen="${ds}"><span class="mc-d">${d.getDate()}</span>${chips}${dots}</button>`;
   }
-  const wh=["一","二","三","四","五","六","日"].map(w=>`<div class="mhcell">${w}</div>`).join("");
+  const wh=["一","二","三","四","五","六","日"].map((w,i)=>`<div class="mhcell ${i>=5?'we':''}">${w}</div>`).join("");
   return `<div class="month"><div class="mhead">${wh}</div><div class="mgrid">${cells}</div></div>`;
 }
 const mqMobile=window.matchMedia("(max-width:720px)");
