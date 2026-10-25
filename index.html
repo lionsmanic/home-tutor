@@ -209,7 +209,25 @@
   .field textarea{resize:vertical;}
   .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sun);}
   .field .hint{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;}
-  .row2{display:flex;gap:10px;} .row2 .field{flex:1;}
+  .row2{display:flex;gap:10px;} .row2 .field{flex:1;min-width:0;}
+  .tpick{display:flex;gap:6px;}
+  .tpick input{flex:1;min-width:0;font-variant-numeric:tabular-nums;}
+  .wbtn{flex:0 0 44px;border:1.5px solid var(--hair);background:#fff;border-radius:11px;font-size:18px;cursor:pointer;font-family:inherit;}
+  .wbtn.on{border-color:var(--sun);background:var(--sun-soft);}
+  .wheel{border:1.5px solid var(--hair);border-radius:14px;background:#FDFBF7;padding:8px 10px 12px;margin:-4px 0 13px;}
+  .wheel-tabs{display:flex;gap:6px;align-items:center;margin-bottom:8px;}
+  .wheel-tabs button{border:1px solid var(--hair);background:#fff;border-radius:9px;padding:6px 10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--muted);}
+  .wheel-tabs button b{color:var(--ink);font-variant-numeric:tabular-nums;margin-left:3px;}
+  .wheel-tabs button.on{background:var(--ink);border-color:var(--ink);color:#fff;} .wheel-tabs button.on b{color:#fff;}
+  .wheel-tabs .wheel-done{margin-left:auto;background:var(--sun);border-color:var(--sun);color:#fff;}
+  .wheel-cols{position:relative;display:flex;justify-content:center;align-items:center;gap:6px;height:180px;}
+  .wband{position:absolute;left:0;right:0;top:72px;height:36px;border-radius:10px;background:#fff;box-shadow:0 0 0 1.5px var(--sun) inset;pointer-events:none;}
+  .wcol{position:relative;z-index:1;width:84px;height:180px;overflow-y:scroll;scroll-snap-type:y mandatory;padding:72px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+    -webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);}
+  .wcol::-webkit-scrollbar{display:none;}
+  .witem{height:36px;line-height:36px;text-align:center;scroll-snap-align:center;font-size:20px;font-weight:700;color:#A8A3B4;font-variant-numeric:tabular-nums;cursor:pointer;user-select:none;}
+  .witem.on{color:var(--ink);font-size:23px;font-weight:900;}
+  .wsep{position:relative;z-index:1;font-size:22px;font-weight:900;}
   .seg{display:flex;gap:6px;}
   .wdseg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:10px;}
   .wdseg button{border:1px solid var(--hair);background:#fff;border-radius:9px;padding:8px 0;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;color:var(--ink);position:relative;}
@@ -678,7 +696,7 @@ function openCourseDetail(i,ds){
 }
 
 let editIndex=null, recurMode="weekly", timeMode="fixed";
-function applyTimeSeg(){ modal.querySelector("#seg_fixed").classList.toggle("on",timeMode==="fixed"); modal.querySelector("#seg_flex").classList.toggle("on",timeMode==="flex"); modal.querySelector("#fixedBox").style.display=timeMode==="fixed"?"":"none"; modal.querySelector("#flexBox").style.display=timeMode==="flex"?"":"none"; }
+function applyTimeSeg(){ modal.querySelector("#seg_fixed").classList.toggle("on",timeMode==="fixed"); modal.querySelector("#seg_flex").classList.toggle("on",timeMode==="flex"); modal.querySelector("#fixedBox").style.display=timeMode==="fixed"?"":"none"; modal.querySelector("#flexBox").style.display=timeMode==="flex"?"":"none"; if(timeMode!=="fixed") closeWheel(); }
 /* ---- 指定日期挑選器：選星期 → 列出未來約半年的該星期日期，點選可複選 ---- */
 let pickDates=new Set(), pickWd=1;
 const PICK_WEEKS=26;
@@ -697,6 +715,46 @@ function renderDatePicker(){
   box.querySelector("#dpkCount").textContent=`週${WEEK_CH[pickWd].slice(1)}已選 ${inWd} 天`;
   const all=[...pickDates].sort();
   box.querySelector("#dpkSum").innerHTML=all.length?`共 <b>${all.length}</b> 天：`+all.map(v=>{const d=parseYmd(v);return `${d.getMonth()+1}/${d.getDate()}(${WEEK_CH[isoOf(d)].slice(1)})`;}).join("、"):"還沒選日期";
+}
+/* ---- 時間輪軸：小時 00–23、分鐘每 5 分；可與手動輸入並用 ---- */
+const WH=36; let wheelT=null, wheelDur=60, wheelMute=0;
+function wEl(id){ return modal.querySelector(id); }
+function initWheel(){
+  const hc=wEl("#wcol_h"), mc=wEl("#wcol_m"); if(!hc) return;
+  hc.innerHTML=Array.from({length:24},(_,h)=>`<div class="witem" data-v="${h}">${pad(h)}</div>`).join("");
+  mc.innerHTML=Array.from({length:12},(_,i)=>`<div class="witem" data-v="${i*5}">${pad(i*5)}</div>`).join("");
+  [hc,mc].forEach(col=>{ let t;
+    col.addEventListener("scroll",()=>{ markWheel(col); clearTimeout(t); t=setTimeout(()=>{ if(Date.now()<wheelMute) return; wheelPicked(); },90); });
+    col.addEventListener("click",e=>{ const it=e.target.closest(".witem"); if(it) col.scrollTo({top:[...col.children].indexOf(it)*WH,behavior:"smooth"}); }); });
+  wEl("#wheelBox").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+    if(b.dataset.wtab) openWheel(b.dataset.wtab); else if(b.dataset.wdone!==undefined) closeWheel(); });
+  modal.querySelectorAll("[data-wheel]").forEach(b=>b.addEventListener("click",()=>{ wheelT===b.dataset.wheel&&wEl("#wheelBox").style.display!=="none"?closeWheel():openWheel(b.dataset.wheel); }));
+  ["#f_start","#f_end"].forEach(id=>wEl(id).addEventListener("input",()=>{ updWheelTabs(); const n=normalizeTime(wEl(id).value); if(n&&wheelT&&id==="#f_"+wheelT) syncWheel(n,false); }));
+}
+function markWheel(col){ const i=Math.round(col.scrollTop/WH); [...col.children].forEach((x,k)=>x.classList.toggle("on",k===i)); }
+function curVal(t){ return normalizeTime(wEl("#f_"+t).value); }
+function updWheelTabs(){ ["start","end"].forEach(t=>{ wEl("#wt_"+t).textContent=" "+(curVal(t)||"--:--"); wEl(`[data-wtab="${t}"]`).classList.toggle("on",wheelT===t); }); modal.querySelectorAll("[data-wheel]").forEach(b=>b.classList.toggle("on",wEl("#wheelBox").style.display!=="none"&&b.dataset.wheel===wheelT)); }
+function syncWheel(v,smooth){ const [h,m]=v.split(":").map(Number); wheelMute=Date.now()+(smooth?450:150);
+  const hc=wEl("#wcol_h"), mc=wEl("#wcol_m"), beh=smooth?"smooth":"auto";
+  hc.scrollTo({top:h*WH,behavior:beh}); mc.scrollTo({top:Math.min(11,Math.round(m/5))*WH,behavior:beh});
+  if(!smooth){ markWheel(hc); markWheel(mc); } }
+function openWheel(t){
+  wheelT=t; const box=wEl("#wheelBox"); box.style.display="";
+  const s0=curVal("start"), e0=curVal("end");
+  wheelDur=(s0&&e0&&toMin(e0)>toMin(s0))?toMin(e0)-toMin(s0):60;
+  let v=curVal(t);
+  if(!v){ v=t==="start"?"09:00":fmtHM((s0?toMin(s0):9*60)+60); wEl("#f_"+t).value=v; if(t==="start"&&!e0) wEl("#f_end").value=fmtHM(toMin(v)+60); }
+  updWheelTabs(); requestAnimationFrame(()=>syncWheel(v,false));
+}
+function closeWheel(){ const box=modal&&modal.querySelector("#wheelBox"); if(box) box.style.display="none"; if(box) updWheelTabs(); }
+function wheelPicked(){
+  if(!wheelT) return; const hc=wEl("#wcol_h"), mc=wEl("#wcol_m");
+  const h=Math.max(0,Math.min(23,Math.round(hc.scrollTop/WH))), m=Math.max(0,Math.min(11,Math.round(mc.scrollTop/WH)))*5;
+  const v=pad(h)+":"+pad(m), inp=wEl("#f_"+wheelT); if(inp.value===v) return;
+  inp.value=v;
+  if(wheelT==="start"){ const e=curVal("end"); if(e) wEl("#f_end").value=fmtHM(toMin(v)+wheelDur); }   // 調開始時間，課長不變
+  else { const s0=curVal("start"); if(s0&&toMin(v)>toMin(s0)) wheelDur=toMin(v)-toMin(s0); }
+  updWheelTabs();
 }
 function openCourseModal(i,prefill){
   editIndex=(i==null)?null:i;
@@ -727,7 +785,9 @@ function openCourseModal(i,prefill){
       <div class="dpk-sum" id="dpkSum"></div>
     </div>
     <div class="field"><label>時間</label><div class="seg"><button id="seg_fixed" class="${timeMode==="fixed"?"on":""}" data-mode="fixed">固定時間</button><button id="seg_flex" class="${timeMode==="flex"?"on":""}" data-mode="flex">彈性說明</button></div></div>
-    <div id="fixedBox" class="row2" style="${timeMode==="fixed"?"":"display:none"}"><div class="field"><label>開始</label><input id="f_start" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:MM 例 09:30" value="${c.start||""}"></div><div class="field"><label>結束</label><input id="f_end" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:MM 例 10:30" value="${c.end||""}"></div></div>
+    <div id="fixedBox" class="row2" style="${timeMode==="fixed"?"":"display:none"}"><div class="field"><label>開始</label><div class="tpick"><input id="f_start" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:MM" value="${c.start||""}"><button type="button" class="wbtn" data-wheel="start" aria-label="用輪軸選開始時間">🕒</button></div></div><div class="field"><label>結束</label><div class="tpick"><input id="f_end" type="text" inputmode="numeric" autocomplete="off" placeholder="HH:MM" value="${c.end||""}"><button type="button" class="wbtn" data-wheel="end" aria-label="用輪軸選結束時間">🕒</button></div></div></div>
+    <div id="wheelBox" class="wheel" style="display:none"><div class="wheel-tabs"><button type="button" data-wtab="start">開始<b id="wt_start"></b></button><button type="button" data-wtab="end">結束<b id="wt_end"></b></button><button type="button" class="wheel-done" data-wdone>完成</button></div>
+      <div class="wheel-cols"><div class="wband"></div><div class="wcol" id="wcol_h"></div><span class="wsep">:</span><div class="wcol" id="wcol_m"></div></div></div>
     <div id="flexBox" class="field" style="${timeMode==="flex"?"":"display:none"}"><label>時間說明</label><input id="f_note" value="${esc(c.timeNote)}" placeholder="例如：晚餐後 20 分鐘 / 有空再去"></div>
     <div class="field"><label>目標／備註</label><input id="f_goal" value="${esc(c.goal)}" placeholder="這堂課的重點"></div>
     <div class="field"><label>老師聯絡方式（選填，請假會用到）</label>
@@ -740,6 +800,7 @@ function openCourseModal(i,prefill){
   modal.querySelectorAll("[data-recur]").forEach(b=>b.addEventListener("click",()=>{ recurMode=b.dataset.recur; modal.querySelector("#seg_weekly").classList.toggle("on",recurMode==="weekly"); modal.querySelector("#seg_once").classList.toggle("on",recurMode==="once"); modal.querySelector("#dayBox").style.display=recurMode==="weekly"?"":"none"; modal.querySelector("#dateBox").style.display=recurMode==="once"?"":"none"; }));
   modal.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{ timeMode=b.dataset.mode; applyTimeSeg(); }));
   renderDatePicker();
+  initWheel();
   modal.querySelector("#dateBox").addEventListener("click",e=>{
     const b=e.target.closest("button"); if(!b) return;
     if(b.dataset.wd){ pickWd=+b.dataset.wd; }
