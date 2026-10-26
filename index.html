@@ -33,6 +33,9 @@
 
   .banner{display:none;margin:16px 0 0;background:var(--clash-soft);border:1px solid #F3C0C0;color:#9A2A2A;border-radius:var(--radius);padding:12px 14px;font-size:14px;font-weight:500;}
   .banner.show{display:block;}
+  .cloudbar{display:none;margin:16px 0 0;background:#EEF3FB;border:1px solid #CFDCF2;color:#2F4A75;border-radius:var(--radius);padding:10px 12px 10px 14px;font-size:14px;font-weight:600;align-items:center;gap:10px;}
+  .cloudbar.show{display:flex;} .cloudbar span{flex:1;line-height:1.45;}
+  .cloudbar button{flex:0 0 auto;border:none;background:#2F6FD6;color:#fff;border-radius:10px;padding:8px 14px;font-weight:800;font-family:inherit;cursor:pointer;font-size:14px;}
   .banner b{font-weight:700;}
   .banner.info{background:#F7F4EE;border-color:var(--hair);color:var(--ink);}
   .banner .sub{margin-top:8px;color:var(--muted);font-size:13px;}
@@ -290,11 +293,12 @@
   </header>
 
   <main class="wrap">
+    <div class="cloudbar" id="cloudBar"></div>
     <div class="banner" id="banner"></div>
 
     <div class="toolbar">
       <button class="tbtn primary" data-add>＋ 新增課程</button>
-      <button class="tbtn" id="syncBtn" data-sync>📅 Google 日曆同步</button>
+      <button class="tbtn" id="syncBtn" data-sync>☁️ Google 同步</button>
       <button class="tbtn" data-share>📤 分享到其他裝置</button>
       <button class="tbtn" data-export>⬇ 匯出備份</button>
       <button class="tbtn" data-import>⬆ 匯入</button>
@@ -912,13 +916,17 @@ mqMobile.addEventListener("change",renderCalendar);
    權限 calendar.app.created：只能管理這個 App 自己建立的日曆，看不到你其他日曆
    單向：以這頁為準，存檔後自動新增／修改／刪除 Google 上對應的活動
    ===================================================================== */
-const GCAL_KEY="home-tutor-gcal-v1", GCAL_SCOPE="https://www.googleapis.com/auth/calendar.app.created", GAPI="https://www.googleapis.com/calendar/v3";
+const GCAL_KEY="home-tutor-gcal-v1", CAL_SCOPE="https://www.googleapis.com/auth/calendar.app.created", DRIVE_SCOPE="https://www.googleapis.com/auth/drive.appdata", GCAL_SCOPE=CAL_SCOPE+" "+DRIVE_SCOPE, GAPI="https://www.googleapis.com/calendar/v3";
+const BUILTIN_CLIENT_ID="";   // 填入你的 OAuth 用戶端 ID 後，任何裝置打開都不用再貼，直接登入即可
+const CLOUD_FILE="home-tutor.json", DRIVE="https://www.googleapis.com/drive/v3", DRIVE_UP="https://www.googleapis.com/upload/drive/v3";
 const GCAL_NAME="Alyssa & Evelyn 課表";
-let gcal=(()=>{ try{ return JSON.parse(localStorage.getItem(GCAL_KEY))||null; }catch(e){ return null; } })();   // {clientId, calendarId, last}
+let gcal=(()=>{ try{ return JSON.parse(localStorage.getItem(GCAL_KEY))||null; }catch(e){ return null; } })();   // {clientId, calendarId, last, fileId, cloudAt, linked}
+if(BUILTIN_CLIENT_ID&&!(gcal&&gcal.clientId)) gcal={clientId:BUILTIN_CLIENT_ID,calendarId:"",last:0};
 let gTok=(()=>{ try{ const t=JSON.parse(localStorage.getItem(GCAL_KEY+"-tok")); return t&&t.exp>Date.now()+60000?t:null; }catch(e){ return null; } })();
 let tokenClient=null, gState={busy:false,err:"",pending:false}, gTimer=null, afterToken=null;
 function saveG(){ try{ gcal?localStorage.setItem(GCAL_KEY,JSON.stringify(gcal)):localStorage.removeItem(GCAL_KEY); }catch(e){} }
-const tokOk=()=>gTok&&gTok.exp>Date.now()+60000;
+const tokOk=()=>!!(gTok&&gTok.exp>Date.now()+60000&&gTok.sc&&gTok.sc.includes(DRIVE_SCOPE)&&gTok.sc.includes(CAL_SCOPE));
+let calDirty=false;
 
 function loadGis(){ return new Promise((res,rej)=>{ if(window.google&&google.accounts&&google.accounts.oauth2) return res();
   const sc=document.createElement("script"); sc.src="https://accounts.google.com/gsi/client"; sc.async=true; sc.onload=()=>res(); sc.onerror=()=>rej(new Error("無法載入 Google 登入元件")); document.head.appendChild(sc); }); }
@@ -926,16 +934,18 @@ async function initTokenClient(){
   if(!gcal||!gcal.clientId) return; await loadGis();
   tokenClient=google.accounts.oauth2.initTokenClient({ client_id:gcal.clientId, scope:GCAL_SCOPE,
     callback:r=>{ if(r.error){ gState.err="Google 授權失敗："+r.error; paintG(); return; }
-      gTok={t:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000}; try{ localStorage.setItem(GCAL_KEY+"-tok",JSON.stringify(gTok)); }catch(e){}
+      if(!google.accounts.oauth2.hasGrantedAllScopes(r,CAL_SCOPE,DRIVE_SCOPE)){ gState.err="登入時請兩個權限都勾選（日曆、App 資料），再按一次登入"; gState.pending=true; gTok=null; paintG(); return; }
+      gTok={t:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000,sc:r.scope}; try{ localStorage.setItem(GCAL_KEY+"-tok",JSON.stringify(gTok)); }catch(e){}
       gState.err=""; const f=afterToken; afterToken=null; if(f) f(); else gSyncNow(); },
-    error_callback:e=>{ gState.err=e&&e.type==="popup_failed_to_open"?"登入視窗被擋，請點「立即同步」":"已取消 Google 登入"; gState.pending=true; paintG(); } });
+    error_callback:e=>{ gState.err=e&&e.type==="popup_failed_to_open"?"登入視窗被擋，請點上方「登入 Google」":"已取消 Google 登入"; gState.pending=true; paintG(); } });
 }
-function askToken(then){ if(!tokenClient){ gState.pending=true; paintG(); return; } afterToken=then||null; tokenClient.requestAccessToken({prompt:gTok?"":"consent"}); }
+function askToken(then){ if(!tokenClient){ gState.pending=true; paintG(); return; } afterToken=then||null; tokenClient.requestAccessToken({prompt:""}); }
 
 async function gapi(path,opt={}){
-  const r=await fetch(GAPI+path,{...opt,headers:{"Authorization":"Bearer "+gTok.t,...(opt.body?{"Content-Type":"application/json"}:{})}});
+  const r=await fetch(/^https:/.test(path)?path:GAPI+path,{...opt,headers:{"Authorization":"Bearer "+gTok.t,...(opt.body?{"Content-Type":opt.ctype||"application/json"}:{})}});
   if(r.status===401){ gTok=null; throw Object.assign(new Error("登入已過期"),{code:401}); }
   if(!r.ok&&!(opt.ok||[]).includes(r.status)){ let m=""; try{ m=(await r.json()).error.message; }catch(e){} throw Object.assign(new Error(`Google 回應 ${r.status}${m?"："+m:""}`),{code:r.status}); }
+  if(opt.text) return {_s:r.status,text:await r.text()};
   return r.status===204||!r.headers.get("content-type")?{_s:r.status}:Object.assign(await r.json(),{_s:r.status});
 }
 
@@ -985,8 +995,54 @@ async function reconcile(){
   return {add,upd,del};
 }
 
+/* ---- 雲端課表：Google Drive 的 App 專用資料夾（不公開、Drive 介面看不到） ---- */
+async function cloudFind(){
+  if(gcal.fileId) return gcal.fileId;
+  const r=await gapi(`${DRIVE}/files?spaces=appDataFolder&fields=files(id)&q=${encodeURIComponent(`name='${CLOUD_FILE}'`)}`);
+  gcal.fileId=(r.files&&r.files[0]&&r.files[0].id)||""; saveG(); return gcal.fileId;
+}
+async function cloudRead(){
+  const id=await cloudFind(); if(!id) return null;
+  const r=await gapi(`${DRIVE}/files/${id}?alt=media`,{text:true,ok:[404]});
+  if(r._s===404){ gcal.fileId=""; saveG(); return null; }
+  try{ return JSON.parse(r.text); }catch(e){ return null; }
+}
+async function cloudWrite(){
+  const body=JSON.stringify({courses,marks,updatedAt});
+  const id=await cloudFind();
+  if(id){ const r=await gapi(`${DRIVE_UP}/files/${id}?uploadType=media`,{method:"PATCH",body,ok:[404]}); if(r._s!==404){ gcal.cloudAt=updatedAt; saveG(); return; } gcal.fileId=""; }
+  const b="htb"+Math.random().toString(36).slice(2);
+  const multi=`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({name:CLOUD_FILE,parents:["appDataFolder"]})}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`;
+  const r=await gapi(`${DRIVE_UP}/files?uploadType=multipart&fields=id`,{method:"POST",body:multi,ctype:"multipart/related; boundary="+b});
+  gcal.fileId=r.id; gcal.cloudAt=updatedAt; saveG();
+}
+const sameData=(a,b)=>JSON.stringify({c:a.courses,m:a.marks||{}})===JSON.stringify({c:b.courses,m:b.marks||{}});
+function adoptCloud(d){
+  courses=d.courses||[]; marks=d.marks||{}; updatedAt=d.updatedAt||Date.now(); ensureCids();
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,updatedAt})); }catch(e){}
+  gcal.cloudAt=updatedAt; saveG(); renderAll();
+}
+function askWhich(d){ return new Promise(res=>{
+  const n=c=>(c.courses||[]).length;
+  openModal(`<h2>雲端已經有一份課表</h2><p class="field hint">這台裝置和雲端各有一份不同的課表。要用哪一份？另一份會被覆蓋。</p>
+    <div class="modal-acts" style="flex-direction:column"><button class="btn btn-save" id="wCloud">用雲端的（${n(d)} 堂課）</button><button class="btn btn-cancel" id="wLocal">用這台的（${courses.length} 堂課）</button></div>`);
+  modal.querySelector("#wCloud").onclick=()=>{ closeModal(); res("cloud"); };
+  modal.querySelector("#wLocal").onclick=()=>{ closeModal(); res("local"); }; }); }
+// 先拉雲端：雲端較新就載入；這台第一次連結且兩邊都有不同內容時問使用者
+async function pullCloud(){
+  const d=await cloudRead();
+  if(!d||!d.courses){ gcal.linked=true; saveG(); return {push:true}; }
+  const localHas=courses.length>0, differ=!sameData(d,{courses,marks});
+  if(!differ){ gcal.linked=true; gcal.cloudAt=d.updatedAt||0; saveG(); return {push:(updatedAt||0)>(d.updatedAt||0)}; }
+  if(!gcal.linked&&localHas&&d.courses.length){ const pick=await askWhich(d); gcal.linked=true; saveG();
+    if(pick==="cloud"){ adoptCloud(d); toast("☁️ 已載入雲端課表"); return {push:false}; } updatedAt=Date.now(); calDirty=true; return {push:true}; }
+  gcal.linked=true; saveG();
+  if(!localHas||(d.updatedAt||0)>(updatedAt||0)){ adoptCloud(d); toast("☁️ 已更新為最新課表"); return {push:false}; }
+  return {push:true};
+}
+
 /* ---- 觸發 ---- */
-function schedulePush(){ if(!gcal||!gcal.clientId) return; gState.pending=true; paintG(); clearTimeout(gTimer);
+function schedulePush(){ if(!gcal||!gcal.clientId) return; calDirty=true; gState.pending=true; paintG(); clearTimeout(gTimer);
   if(!tokOk()){ askToken(); return; }               // 存檔是點按觸發，登入視窗可以跳出；已授權過會自動關閉
   gTimer=setTimeout(gSyncNow,1200); }
 async function gSyncNow(){
@@ -994,32 +1050,46 @@ async function gSyncNow(){
   if(!tokOk()){ askToken(); return; }
   if(gState.busy){ clearTimeout(gTimer); gTimer=setTimeout(gSyncNow,1500); return; }
   gState.busy=true; gState.err=""; paintG();
-  try{ const r=await reconcile(); gcal.last=Date.now(); saveG(); gState.pending=false; gState.res=r; }
-  catch(e){ gState.err=e.code===401?"Google 登入已過期，請點「立即同步」":(e.message||"同步失敗"); gState.pending=true; }
+  try{
+    const {push}=await pullCloud();
+    if(push) await cloudWrite();
+    if(calDirty||!gcal.last||!gcal.calendarId){ gState.res=await reconcile(); gcal.last=Date.now(); calDirty=false; }
+    gcal.seen=Date.now(); saveG(); gState.pending=false;
+  }catch(e){ gState.err=e.code===401?"Google 登入已過期，請點上方「登入 Google」":e.code===403&&/drive/i.test(e.message)?"請先在 Google Cloud 啟用 Google Drive API":(e.message||"同步失敗"); gState.pending=true; }
   gState.busy=false; paintG();
 }
+// 切回這個分頁時，自動抓別台裝置的最新版
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&gcal&&gcal.clientId&&tokOk()&&!gState.busy) gSyncNow(); });
 function gStatHTML(){
   if(!gcal||!gcal.clientId) return `<div id="gStat" class="sync-stat">尚未設定</div>`;
   if(gState.busy) return `<div id="gStat" class="sync-stat">🔄 同步中…</div>`;
   if(gState.err) return `<div id="gStat" class="sync-stat err">⚠️ ${gState.err}</div>`;
   if(gState.pending) return `<div id="gStat" class="sync-stat">有變更尚未同步</div>`;
   const t=gcal.last?new Date(gcal.last):null, r=gState.res;
-  return `<div id="gStat" class="sync-stat ok">✅ ${t?`已同步 ${t.getMonth()+1}/${t.getDate()} ${pad(t.getHours())}:${pad(t.getMinutes())}`:"已連結"}${r&&(r.add||r.upd||r.del)?`（新增 ${r.add}、更新 ${r.upd}、刪除 ${r.del}）`:""}</div>`;
+  const sn=gcal.seen?new Date(gcal.seen):t;
+  return `<div id="gStat" class="sync-stat ok">✅ 雲端課表與 Google 日曆已同步${sn?` · ${sn.getMonth()+1}/${sn.getDate()} ${pad(sn.getHours())}:${pad(sn.getMinutes())}`:""}${r&&(r.add||r.upd||r.del)?`（日曆 新增 ${r.add}、更新 ${r.upd}、刪除 ${r.del}）`:""}</div>`;
 }
 function paintG(){
-  const b=document.getElementById("syncBtn"); if(b){ const on=!!(gcal&&gcal.clientId); b.classList.toggle("synced",on&&!gState.err&&!gState.pending); b.classList.toggle("syncerr",on&&(!!gState.err||gState.pending)); }
+  const b=document.getElementById("syncBtn"); if(b){ const on=!!(gcal&&gcal.clientId); b.classList.toggle("synced",on&&tokOk()&&!gState.err&&!gState.pending&&!gState.busy); b.classList.toggle("syncerr",on&&(!!gState.err||gState.pending)); }
   const st=modal&&modal.querySelector("#gStat"); if(st) st.outerHTML=gStatHTML();
+  const bar=document.getElementById("cloudBar"); if(!bar) return;
+  const on=!!(gcal&&gcal.clientId); let h="";
+  if(on&&!tokOk()&&!gState.busy) h=`<span>☁️ 登入 Google，載入電腦／手機上最新的課表</span><button data-glogin>登入 Google</button>`;
+  else if(on&&gState.busy) h=`<span>☁️ 同步中…</span>`;
+  else if(on&&gState.err) h=`<span>⚠️ ${gState.err}</span><button data-glogin>重試</button>`;
+  else if(!on&&!courses.length) h=`<span>☁️ 在別台裝置排過課？用 Google 同步就能在這裡看到同一份</span><button data-sync>設定</button>`;
+  bar.innerHTML=h; bar.classList.toggle("show",!!h);
 }
 
 /* ---- 設定視窗 ---- */
 function openSync(){
   const origin=location.origin;
-  if(!gcal||!gcal.clientId){ openModal(`<h2>📅 同步到 Google 日曆</h2>
-    <p class="field hint" style="margin-top:-4px">會在你的 Google 帳號建立一個專用日曆「${GCAL_NAME}」，課表存檔後自動更新（含刪除、請假）。授權範圍只限這個日曆，看不到你其他行程。iPhone 只要加入同一個 Google 帳號就會看到。</p>
+  if(!gcal||!gcal.clientId){ openModal(`<h2>☁️ Google 同步</h2>
+    <p class="field hint" style="margin-top:-4px">登入 Google 後：<b>① 課表存到你 Google Drive 的 App 專用資料夾</b>（不公開，Drive 裡也看不到），手機和電腦登入同一個帳號就看到同一份；<b>② 自動寫進專用日曆「${GCAL_NAME}」</b>，iPhone 加入同一個 Google 帳號就會看到。授權只限這兩樣，看不到你其他檔案與行程。</p>
     <p class="field hint"><b>第一次要在 Google Cloud 做一次設定（約 10 分鐘）：</b></p>
     <ol class="sync-steps">
       <li><a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">建立專案</a>，名稱隨意（如 home-tutor）</li>
-      <li><a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noopener">啟用 Google Calendar API</a></li>
+      <li>啟用兩個 API：<a href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" target="_blank" rel="noopener">Google Calendar API</a>、<a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener">Google Drive API</a></li>
       <li><a href="https://console.cloud.google.com/auth/overview" target="_blank" rel="noopener">Google Auth Platform</a> › 開始設定：應用程式名稱填「每日課表」、目標對象選 <b>External（外部）</b>；到「目標對象」把你自己的 Gmail 加進 <b>測試使用者</b></li>
       <li><a href="https://console.cloud.google.com/auth/clients" target="_blank" rel="noopener">用戶端</a> › 建立用戶端 › 類型 <b>網頁應用程式</b> › 已授權的 JavaScript 來源加入：<br><code>${origin}</code></li>
       <li>複製產生的「用戶端 ID」（…apps.googleusercontent.com）貼到下面</li>
@@ -1032,13 +1102,13 @@ function openSync(){
       initTokenClient().then(()=>{ askToken(()=>{ gSyncNow().then(openSync); }); }).catch(e=>toast("⚠️ "+e.message)); });
     return; }
   const calUrl=gcal.calendarId?`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(gcal.calendarId)}`:"https://calendar.google.com/";
-  openModal(`<h2>📅 Google 日曆同步</h2>${gStatHTML()}
+  openModal(`<h2>☁️ Google 同步</h2>${gStatHTML()}
     <div class="field"><label>在哪裡看</label>
       <div class="sync-row"><a class="sync-go" target="_blank" rel="noopener" href="${calUrl}">📆 打開 Google 日曆</a></div>
       <div class="hint"><b>Google 日曆</b>：左側「我的日曆」會出現「${GCAL_NAME}」，A 為橘色、E 為綠色。<br>
       <b>iPhone</b>：設定 › 行事曆 › 帳號 › 加入帳號 › Google，登入同一個帳號並打開「行事曆」。若沒看到這個日曆，用 iPhone 開 <a href="https://calendar.google.com/calendar/syncselect" target="_blank" rel="noopener">calendar.google.com/calendar/syncselect</a> 勾選它。<br>
       日曆上請不要手動改這些課：下次同步會以課表頁為準覆蓋回來。</div></div>
-    <div class="field"><label>其他裝置</label><div class="hint">換手機或電腦時，用「📤 分享到其他裝置」傳過去，設定會一起帶過去，第一次存檔時登入同一個 Google 帳號即可。</div></div>
+    <div class="field"><label>手機／其他電腦</label><div class="hint">打開同一個網址，點上方藍色的「登入 Google」，登入同一個帳號就會載入同一份課表。之後在任何一台修改，另一台切回這頁時會自動更新。</div></div>
     <div class="modal-acts"><button class="btn btn-del" id="gOff">停用</button><button class="btn btn-cancel" id="gNow">立即同步</button><button class="btn btn-save" data-close>完成</button></div>`);
   modal.querySelector("#gNow").addEventListener("click",()=>{ tokOk()?gSyncNow():askToken(); });
   modal.querySelector("#gOff").addEventListener("click",()=>{ openModal(`<h2>停用 Google 同步？</h2><p class="field hint">這台裝置之後存檔不會再更新 Google 日曆。Google 上的「${GCAL_NAME}」不會被刪除，不要的話可到 Google 日曆設定裡自行刪除該日曆。</p>
@@ -1046,7 +1116,7 @@ function openSync(){
     modal.querySelector("#gOff2").addEventListener("click",()=>{ try{ if(window.google&&gTok) google.accounts.oauth2.revoke(gTok.t); }catch(e){} gcal=null; gTok=null; saveG(); try{ localStorage.removeItem(GCAL_KEY+"-tok"); }catch(e){} gState={busy:false,err:"",pending:false}; paintG(); closeModal(); toast("已停用 Google 同步"); }); });
 }
 function adoptSharedGcal(g){ if(g&&g.clientId&&!(gcal&&gcal.clientId)){ gcal={clientId:g.clientId,calendarId:g.calendarId||"",last:0}; saveG(); initTokenClient().catch(()=>{}); } }
-document.addEventListener("click",e=>{ if(e.target.closest("[data-sync]")) openSync(); });
+document.addEventListener("click",e=>{ if(e.target.closest("[data-sync]")) openSync(); else if(e.target.closest("[data-glogin]")){ gState.err=""; tokOk()?gSyncNow():askToken(); } });
 // 舊版 Gist 同步設定（已改用 Google 日曆）清掉
 try{ localStorage.removeItem("home-tutor-sync-v1"); }catch(e){}
 
@@ -1054,7 +1124,7 @@ try{ localStorage.removeItem("home-tutor-sync-v1"); }catch(e){}
 document.getElementById("todayLine").textContent=`📅 今天 ${now.getMonth()+1}/${now.getDate()} ${["週日","週一","週二","週三","週四","週五","週六"][now.getDay()]}`;
 initData();
 renderAll();
-paintG(); if(gcal&&gcal.clientId) initTokenClient().catch(()=>{});
+paintG(); if(gcal&&gcal.clientId) initTokenClient().then(()=>{ if(tokOk()) gSyncNow(); }).catch(e=>{ gState.err=e.message; paintG(); });
 const _shared=readSharedFromHash();
 if(_shared){ pendingShared=_shared; promptShared(_shared); }
 </script>
