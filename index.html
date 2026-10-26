@@ -241,6 +241,11 @@
   .witem.on{color:var(--ink);font-size:23px;font-weight:900;}
   .wsep{position:relative;z-index:1;font-size:22px;font-weight:900;}
   .seg{display:flex;gap:6px;}
+  .rchips{display:flex;flex-wrap:wrap;gap:6px;}
+  .rchips button{border:1.5px solid var(--hair);background:#fff;border-radius:999px;padding:7px 12px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);}
+  .rchips button.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .rchips button.none.on{background:#6E6D78;border-color:#6E6D78;}
+  .rchips button.def.on{background:var(--sun);border-color:var(--sun);}
   .wdseg{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:10px;}
   .wdseg button{border:1px solid var(--hair);background:#fff;border-radius:9px;padding:8px 0;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;color:var(--ink);position:relative;}
   .wdseg button.on{background:var(--ink);color:#fff;border-color:var(--ink);}
@@ -365,8 +370,14 @@ function migrateOld(){ try{ const raw=localStorage.getItem(OLD_STORE_KEY); if(!r
   const keep=d.courses.filter(c=>!LEGACY_SAMPLES.has(c.child+"|"+c.title)); const ids=new Set(keep.map(c=>c.cid).filter(Boolean)); const marks={};
   Object.keys(d.marks||{}).forEach(k=>{ if(ids.has(k.split("__")[0])) marks[k]=d.marks[k]; });
   return {courses:keep,marks}; }catch(e){ return null; } }
-function saveData(){ updatedAt=Date.now(); try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,updatedAt})); }catch(e){} if(typeof schedulePush==="function") schedulePush(); }
+function saveData(){ updatedAt=Date.now(); try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,settings,updatedAt})); }catch(e){} if(typeof schedulePush==="function") schedulePush(); }
 let updatedAt=0;
+// 共用設定（跟課表一起存、一起同步到雲端）：remind = 預設提醒（課前幾分鐘，可多個）
+let settings={remind:[15]};
+const REMIND_OPTS=[[5,"5 分"],[10,"10 分"],[15,"15 分"],[30,"30 分"],[60,"1 小時"],[120,"2 小時"],[1440,"前一天"]];
+const remindLabel=m=>m>=1440?(m===1440?"前一天":`${m/1440} 天前`):m>=60?`${m/60} 小時前`:`${m} 分鐘前`;
+const remindOf=c=>Array.isArray(c.remind)?c.remind:(settings.remind||[]);   // 課程沒自訂就用預設；[] = 不提醒
+function remindText(c){ const r=remindOf(c); return r.length?r.slice().sort((a,b)=>b-a).map(remindLabel).join("、"):"不提醒"; }
 const cuid=()=>"c_"+Math.random().toString(36).slice(2,8);
 function ensureCids(){ courses.forEach(c=>{ if(!c.cid) c.cid=cuid(); }); }
 function migrateTeachers(d){
@@ -375,7 +386,7 @@ function migrateTeachers(d){
     (d.courses||[]).forEach(c=>{ if(c.teacherId&&by[c.teacherId]){ const t=by[c.teacherId]; c.tname=c.tname||t.name||""; c.line=c.line||t.line||""; c.email=c.email||t.email||""; c.fb=c.fb||t.fb||""; } delete c.teacherId; });
   }
 }
-function initData(){ const d=loadData(); if(d&&d.courses){ migrateTeachers(d); courses=d.courses; marks=d.marks||{}; updatedAt=d.updatedAt||0; } else { courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; } ensureCids(); }
+function initData(){ const d=loadData(); if(d&&d.courses){ migrateTeachers(d); courses=d.courses; marks=d.marks||{}; if(d.settings) settings=d.settings; updatedAt=d.updatedAt||0; } else { courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; } ensureCids(); }
 
 /* ---------- 工具 ---------- */
 const DAYS=["週一","週二","週三","週四","週五","週六","週日"];
@@ -701,6 +712,7 @@ function openCourseDetail(i,ds){
     <h2>${c.title}</h2>
     <p class="detail-meta">${c.child} · ${when} · ${displayTime(c)}</p>
     <p class="detail-meta">老師：${teacherName(c)}${c.goal?` · ${c.goal}`:""}</p>
+    ${c.start?`<p class="detail-meta">🔔 ${remindText(c)}${Array.isArray(c.remind)?"":"（預設）"}</p>`:""}
     <button class="btn leave-big" data-leave="${i}" data-ds="${ds}" data-channel="line">📩 用 LINE 請假</button>
     ${lineHint}${emailBtn}${status}
     <div class="field" style="margin-top:10px"><label>這堂課的註記（會在課表顯示 📝）</label><textarea id="f_occnote" rows="2" placeholder="例如：改線上 / 老師說帶課本">${esc(m.note||"")}</textarea></div>
@@ -711,9 +723,22 @@ function openCourseDetail(i,ds){
 }
 
 let editIndex=null, recurMode="weekly", timeMode="fixed";
-function applyTimeSeg(){ modal.querySelector("#seg_fixed").classList.toggle("on",timeMode==="fixed"); modal.querySelector("#seg_flex").classList.toggle("on",timeMode==="flex"); modal.querySelector("#fixedBox").style.display=timeMode==="fixed"?"":"none"; modal.querySelector("#flexBox").style.display=timeMode==="flex"?"":"none"; if(timeMode!=="fixed") closeWheel(); }
+function applyTimeSeg(){ modal.querySelector("#seg_fixed").classList.toggle("on",timeMode==="fixed"); modal.querySelector("#seg_flex").classList.toggle("on",timeMode==="flex"); modal.querySelector("#fixedBox").style.display=timeMode==="fixed"?"":"none"; modal.querySelector("#flexBox").style.display=timeMode==="flex"?"":"none"; if(timeMode!=="fixed") closeWheel(); const rf=modal.querySelector("#remindField"); if(rf) rf.style.display=timeMode==="fixed"?"":"none"; }
+/* ---- 提醒選擇：多選；「用預設」= 不自訂 ---- */
+function remindChips(sel,withDefault){ // sel: null=用預設, []=不提醒, [..]=自訂
+  const isDef=sel===null, arr=sel||[];
+  return (withDefault?`<button type="button" class="def ${isDef?'on':''}" data-r="def">用預設（${(settings.remind||[]).length?settings.remind.slice().sort((a,b)=>b-a).map(remindLabel).join("、"):"不提醒"}）</button>`:"")
+    +`<button type="button" class="none ${!isDef&&!arr.length?'on':''}" data-r="none">不提醒</button>`
+    +REMIND_OPTS.map(([m,t])=>`<button type="button" class="${!isDef&&arr.includes(m)?'on':''}" data-r="${m}">${t}</button>`).join("");
+}
+function bindRemind(box,get,set,withDefault){
+  box.innerHTML=remindChips(get(),withDefault);
+  box.onclick=e=>{ const b=e.target.closest("[data-r]"); if(!b) return; const v=b.dataset.r; let cur=get();
+    if(v==="def") cur=null; else if(v==="none") cur=[]; else { const m=+v; cur=(cur||[]).slice(); cur=cur.includes(m)?cur.filter(x=>x!==m):[...cur,m].slice(-5); if(!cur.length&&withDefault) cur=null; }
+    set(cur); box.innerHTML=remindChips(get(),withDefault); };
+}
 /* ---- 指定日期挑選器：選星期 → 列出未來約半年的該星期日期，點選可複選 ---- */
-let pickDates=new Set(), pickWd=1;
+let pickDates=new Set(), pickWd=1, remindSel=null;
 const PICK_WEEKS=26;
 function pickRange(){ const t=new Date(now); t.setHours(0,0,0,0); let d=addDays(t,(pickWd-isoOf(t)+7)%7); const out=[]; for(let i=0;i<PICK_WEEKS;i++){ out.push(ymd(d)); d=addDays(d,7); } return out; }
 function renderDatePicker(){
@@ -804,6 +829,7 @@ function openCourseModal(i,prefill){
     <div id="wheelBox" class="wheel" style="display:none"><div class="wheel-tabs"><button type="button" data-wtab="start">開始<b id="wt_start"></b></button><button type="button" data-wtab="end">結束<b id="wt_end"></b></button><button type="button" class="wheel-done" data-wdone>完成</button></div>
       <div class="wheel-cols"><div class="wband"></div><div class="wcol" id="wcol_h"></div><span class="wsep">:</span><div class="wcol" id="wcol_m"></div></div></div>
     <div id="flexBox" class="field" style="${timeMode==="flex"?"":"display:none"}"><label>時間說明</label><input id="f_note" value="${esc(c.timeNote)}" placeholder="例如：晚餐後 20 分鐘 / 有空再去"></div>
+    <div class="field" id="remindField" style="${timeMode==="fixed"?"":"display:none"}"><label>🔔 上課提醒（可複選，會同步到 Google 日曆）</label><div class="rchips" id="f_remind"></div></div>
     <div class="field"><label>目標／備註</label><input id="f_goal" value="${esc(c.goal)}" placeholder="這堂課的重點"></div>
     <div class="field"><label>老師聯絡方式（選填，請假會用到）</label>
       <input id="f_line" value="${esc(c.line)}" placeholder="LINE 連結或 ID" style="margin-bottom:6px">
@@ -816,6 +842,8 @@ function openCourseModal(i,prefill){
   modal.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{ timeMode=b.dataset.mode; applyTimeSeg(); }));
   renderDatePicker();
   initWheel();
+  remindSel=Array.isArray(c.remind)?c.remind.slice():null;
+  bindRemind(modal.querySelector("#f_remind"),()=>remindSel,v=>remindSel=v,true);
   modal.querySelector("#dateBox").addEventListener("click",e=>{
     const b=e.target.closest("button"); if(!b) return;
     if(b.dataset.wd){ pickWd=+b.dataset.wd; }
@@ -830,6 +858,7 @@ function openCourseModal(i,prefill){
     modal.querySelector("#f_child").value=x.child; modal.querySelector("#f_title").value=x.title; modal.querySelector("#f_goal").value=x.goal||"";
     modal.querySelector("#f_tname").value=x.tname||""; modal.querySelector("#f_line").value=x.line||""; modal.querySelector("#f_email").value=x.email||""; modal.querySelector("#f_fb").value=x.fb||"";
     if(x.start){ timeMode="fixed"; modal.querySelector("#f_start").value=x.start; modal.querySelector("#f_end").value=x.end||""; } else { timeMode="flex"; modal.querySelector("#f_note").value=x.timeNote||""; }
+    remindSel=Array.isArray(x.remind)?x.remind.slice():null; bindRemind(modal.querySelector("#f_remind"),()=>remindSel,v=>remindSel=v,true);
     applyTimeSeg(); toast("已帶入「"+x.title+"」，再選排課方式即可"); });
   const tnameInput=modal.querySelector("#f_tname");
   if(tnameInput) tnameInput.addEventListener("change",()=>{ const n=tnameInput.value.trim(); if(!n) return; const src=courses.find(x=>x.tname===n&&(x.line||x.email||x.fb)); if(!src) return;
@@ -840,18 +869,19 @@ function saveCourse(){
   const obj={ since:editIndex===null?ymd(now):(courses[editIndex].since||""), cid:editIndex===null?cuid():(courses[editIndex].cid||cuid()), child:g("#f_child").value, title:(g("#f_title").value||"").trim()||"未命名課程", tname:(g("#f_tname").value||"").trim(), line:(g("#f_line").value||"").trim(), email:(g("#f_email").value||"").trim(), fb:(g("#f_fb").value||"").trim(), goal:(g("#f_goal").value||"").trim(), paused:g("#f_paused").checked };
   if(recurMode==="once"){ const ds=[...pickDates].sort(); if(!ds.length){ toast("請至少點選一個日期"); return; } obj.recur="once"; obj.dates=ds; obj.date=ds[0]; } else { obj.recur="weekly"; obj.day=g("#f_day").value; }
   if(timeMode==="fixed"){ const sr=g("#f_start").value.trim(), er=g("#f_end").value.trim(); const s=normalizeTime(sr), e=normalizeTime(er); if((sr&&!s)||(er&&!e)){ toast("時間格式請用 HH:MM，例如 09:30"); return; } if(s&&e&&toMin(e)<=toMin(s)){toast("結束時間要晚於開始時間");return;} if(s){obj.start=s;obj.end=e||s;} } else { obj.timeNote=(g("#f_note").value||"").trim()||"時間未定"; }
+  if(Array.isArray(remindSel)) obj.remind=remindSel.slice();
   if(editIndex===null) courses.push(obj); else courses[editIndex]=obj;
   saveData(); closeModal(); renderAll(); toast(editIndex===null?"已新增課程":"已更新課程");
 }
 function deleteCourseDirect(i){ const cid=courses[i].cid; courses.splice(i,1); Object.keys(marks).forEach(k=>{if(k.startsWith(cid+"__"))delete marks[k];}); saveData(); closeModal(); renderAll(); toast("已刪除課程"); }
 
-function exportData(){ copyText(JSON.stringify({courses,marks},null,2)).then(()=>toast("✅ 設定已複製，貼到記事本即可備份")); }
+function exportData(){ copyText(JSON.stringify({courses,marks,settings},null,2)).then(()=>toast("✅ 設定已複製，貼到記事本即可備份")); }
 
 /* ---- 把整份課表塞進連結，分享到其他裝置 ---- */
 let pendingShared=null;
 function b64uEncode(s){ return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
 function b64uDecode(b){ b=b.replace(/-/g,"+").replace(/_/g,"/"); while(b.length%4)b+="="; return decodeURIComponent(escape(atob(b))); }
-function buildShareUrl(){ const g=gcal&&gcal.clientId?{clientId:gcal.clientId,calendarId:gcal.calendarId}:undefined; return location.origin+location.pathname+"#d="+b64uEncode(JSON.stringify({courses,marks,gcal:g})); }
+function buildShareUrl(){ const g=gcal&&gcal.clientId?{clientId:gcal.clientId,calendarId:gcal.calendarId}:undefined; return location.origin+location.pathname+"#d="+b64uEncode(JSON.stringify({courses,marks,settings,gcal:g})); }
 function shareData(){
   const url=buildShareUrl(), big=url.length>14000;
   if(navigator.share){ navigator.share({title:"Alyssa & Evelyn 的每日課表", text:"課表（點開直接看編好的內容）", url}).catch(()=>{ copyText(url).then(()=>toast("✅ 已複製分享連結，貼到 LINE／訊息傳給其他裝置")); }); }
@@ -864,7 +894,7 @@ function promptShared(data){
     <div class="modal-acts"><button class="btn btn-cancel" data-sharedcancel>不要載入</button><button class="btn btn-save" data-sharedload>載入這份</button></div>`);
 }
 function openImport(){ openModal(`<h2>匯入設定</h2><div class="field"><label>貼上備份的 JSON</label><textarea id="impText" rows="8" placeholder='{"teachers":[...],"courses":[...]}'></textarea></div><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-doimport>匯入</button></div>`); }
-function doImport(){ try{ const d=JSON.parse(modal.querySelector("#impText").value); if(!d.courses)throw 0; migrateTeachers(d); courses=d.courses; marks=d.marks||{}; ensureCids(); saveData(); closeModal(); renderAll(); toast("✅ 已匯入"); }catch(e){ toast("格式不對，請貼完整的 JSON"); } }
+function doImport(){ try{ const d=JSON.parse(modal.querySelector("#impText").value); if(!d.courses)throw 0; migrateTeachers(d); courses=d.courses; marks=d.marks||{}; if(d.settings) settings=d.settings; ensureCids(); saveData(); closeModal(); renderAll(); toast("✅ 已匯入"); }catch(e){ toast("格式不對，請貼完整的 JSON"); } }
 function resetData(){ openModal(`<h2>清空課表？</h2><p class="field hint">會清掉目前的修改（含請假標記），課表會變成空白。建議先「匯出備份」。</p><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" data-doreset>還原</button></div>`); }
 function doReset(){ courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; ensureCids(); saveData(); closeModal(); renderAll(); toast("已清空課表"); }
 
@@ -891,7 +921,7 @@ document.addEventListener("click",e=>{
   else if(d.addonce!==undefined) openCourseModal(null,{recur:"once",date:d.addonce});
   else if(d.export!==undefined) exportData();
   else if(d.share!==undefined) shareData();
-  else if(d.sharedload!==undefined){ if(pendingShared){ adoptSharedGcal(pendingShared.gcal); courses=pendingShared.courses; marks=pendingShared.marks||{}; ensureCids(); saveData(); } pendingShared=null; clearHash(); closeModal(); renderAll(); toast("✅ 已載入分享的課表"); }
+  else if(d.sharedload!==undefined){ if(pendingShared){ adoptSharedGcal(pendingShared.gcal); courses=pendingShared.courses; marks=pendingShared.marks||{}; if(pendingShared.settings) settings=pendingShared.settings; ensureCids(); saveData(); } pendingShared=null; clearHash(); closeModal(); renderAll(); toast("✅ 已載入分享的課表"); }
   else if(d.sharedcancel!==undefined){ pendingShared=null; clearHash(); closeModal(); toast("已保留這台原本的課表"); }
   else if(d.import!==undefined) openImport();
   else if(d.reset!==undefined) resetData();
@@ -955,15 +985,16 @@ const gid=key=>"htev"+hex(key);                                     // Google ev
 function firstOnOrAfter(ds,isos){ let d=parseYmd(ds); for(let i=0;i<7;i++){ if(isos.includes(isoOf(d))) return ymd(d); d=addDays(d,1); } return ds; }
 const BYDAY={1:"MO",2:"TU",3:"WE",4:"TH",5:"FR",6:"SA",7:"SU"}, icsD=ds=>ds.replace(/-/g,""), icsDT=(ds,hm)=>icsD(ds)+"T"+hm.replace(":","")+"00";
 function hashStr(str){ let h=5381; for(let i=0;i<str.length;i++) h=((h<<5)+h+str.charCodeAt(i))|0; return (h>>>0).toString(36); }
-function stampSince(){ let ch=false; courses.forEach(c=>{ if(c.recur!=="once"&&!c.since){ c.since=ymd(mondayOf(now)); ch=true; } }); if(ch){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,updatedAt})); }catch(e){} } }
+function stampSince(){ let ch=false; courses.forEach(c=>{ if(c.recur!=="once"&&!c.since){ c.since=ymd(mondayOf(now)); ch=true; } }); if(ch){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,settings,updatedAt})); }catch(e){} } }
 function desiredEvents(){
   stampSince(); const out={};
   const mk=(key,c,ds,extra={})=>{
     const ev={ summary:`${kidInit(c)} ${c.title}${c.start?"":"（"+(c.timeNote||"彈性")+"）"}`,
       description:[c.child, c.tname?"老師："+c.tname:"", c.goal?"重點："+c.goal:"", "— 由每日課表自動同步，請到課表頁修改"].filter(Boolean).join("\n"),
       colorId:c.child==="Evelyn"?"2":"6", ...extra };
-    if(c.start&&c.end){ ev.start={dateTime:`${ds}T${c.start}:00`,timeZone:"Asia/Taipei"}; ev.end={dateTime:`${ds}T${c.end}:00`,timeZone:"Asia/Taipei"}; }
-    else { ev.start={date:ds}; ev.end={date:ymd(addDays(parseYmd(ds),1))}; ev.transparency="transparent"; }
+    if(c.start&&c.end){ ev.start={dateTime:`${ds}T${c.start}:00`,timeZone:"Asia/Taipei"}; ev.end={dateTime:`${ds}T${c.end}:00`,timeZone:"Asia/Taipei"};
+      ev.reminders={useDefault:false,overrides:[...new Set(remindOf(c))].filter(m=>m>=0&&m<=40320).sort((a,b)=>a-b).slice(0,5).map(m=>({method:"popup",minutes:m}))}; }
+    else { ev.start={date:ds}; ev.end={date:ymd(addDays(parseYmd(ds),1))}; ev.transparency="transparent"; ev.reminders={useDefault:false,overrides:[]}; }
     const h=hashStr(JSON.stringify(ev)); ev.extendedProperties={private:{app:"home-tutor",h}}; out[gid(key)]=ev; };
   courses.forEach(c=>{
     if(c.paused) return;
@@ -1008,7 +1039,7 @@ async function cloudRead(){
   try{ return JSON.parse(r.text); }catch(e){ return null; }
 }
 async function cloudWrite(){
-  const body=JSON.stringify({courses,marks,updatedAt});
+  const body=JSON.stringify({courses,marks,settings,updatedAt});
   const id=await cloudFind();
   if(id){ const r=await gapi(`${DRIVE_UP}/files/${id}?uploadType=media`,{method:"PATCH",body,ok:[404]}); if(r._s!==404){ gcal.cloudAt=updatedAt; saveG(); return; } gcal.fileId=""; }
   const b="htb"+Math.random().toString(36).slice(2);
@@ -1016,10 +1047,10 @@ async function cloudWrite(){
   const r=await gapi(`${DRIVE_UP}/files?uploadType=multipart&fields=id`,{method:"POST",body:multi,ctype:"multipart/related; boundary="+b});
   gcal.fileId=r.id; gcal.cloudAt=updatedAt; saveG();
 }
-const sameData=(a,b)=>JSON.stringify({c:a.courses,m:a.marks||{}})===JSON.stringify({c:b.courses,m:b.marks||{}});
+const sameData=(a,b)=>JSON.stringify({c:a.courses,m:a.marks||{},s:a.settings||null})===JSON.stringify({c:b.courses,m:b.marks||{},s:b.settings||null});
 function adoptCloud(d){
-  courses=d.courses||[]; marks=d.marks||{}; updatedAt=d.updatedAt||Date.now(); ensureCids();
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,updatedAt})); }catch(e){}
+  courses=d.courses||[]; marks=d.marks||{}; if(d.settings) settings=d.settings; updatedAt=d.updatedAt||Date.now(); ensureCids();
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,settings,updatedAt})); }catch(e){}
   gcal.cloudAt=updatedAt; saveG(); renderAll();
 }
 function askWhich(d){ return new Promise(res=>{
@@ -1034,7 +1065,7 @@ async function pullCloud(){
   if(!d||!d.courses){ gcal.linked=true; saveG(); return {push:true}; }
   const localHas=courses.length>0, differ=!sameData(d,{courses,marks});
   if(!differ){ gcal.linked=true; gcal.cloudAt=d.updatedAt||0; saveG(); return {push:(updatedAt||0)>(d.updatedAt||0)}; }
-  if(!gcal.linked&&localHas&&d.courses.length){ const pick=await askWhich(d); gcal.linked=true; saveG();
+  if(!gcal.linked&&localHas&&d.courses.length&&JSON.stringify({c:d.courses,m:d.marks||{}})!==JSON.stringify({c:courses,m:marks})){ const pick=await askWhich(d); gcal.linked=true; saveG();
     if(pick==="cloud"){ adoptCloud(d); toast("☁️ 已載入雲端課表"); return {push:false}; } updatedAt=Date.now(); calDirty=true; return {push:true}; }
   gcal.linked=true; saveG();
   if(!localHas||(d.updatedAt||0)>(updatedAt||0)){ adoptCloud(d); toast("☁️ 已更新為最新課表"); return {push:false}; }
@@ -1108,9 +1139,12 @@ function openSync(){
       <div class="hint"><b>Google 日曆</b>：左側「我的日曆」會出現「${GCAL_NAME}」，A 為橘色、E 為綠色。<br>
       <b>iPhone</b>：設定 › 行事曆 › 帳號 › 加入帳號 › Google，登入同一個帳號並打開「行事曆」。若沒看到這個日曆，用 iPhone 開 <a href="https://calendar.google.com/calendar/syncselect" target="_blank" rel="noopener">calendar.google.com/calendar/syncselect</a> 勾選它。<br>
       日曆上請不要手動改這些課：下次同步會以課表頁為準覆蓋回來。</div></div>
+    <div class="field"><label>🔔 預設上課提醒（沒有個別設定的課都用這個）</label><div class="rchips" id="defRemind"></div>
+      <div class="hint">個別課程可在「編輯課程」另外設定。提醒會跟著課程寫進 Google 日曆，手機 Google 日曆 App 會準時跳通知。</div></div>
     <div class="field"><label>手機／其他電腦</label><div class="hint">打開同一個網址，點上方藍色的「登入 Google」，登入同一個帳號就會載入同一份課表。之後在任何一台修改，另一台切回這頁時會自動更新。</div></div>
     <div class="modal-acts"><button class="btn btn-del" id="gOff">停用</button><button class="btn btn-cancel" id="gNow">立即同步</button><button class="btn btn-save" data-close>完成</button></div>`);
   modal.querySelector("#gNow").addEventListener("click",()=>{ tokOk()?gSyncNow():askToken(); });
+  bindRemind(modal.querySelector("#defRemind"),()=>settings.remind||[],v=>{ settings.remind=v||[]; saveData(); renderAll(); },false);
   modal.querySelector("#gOff").addEventListener("click",()=>{ openModal(`<h2>停用 Google 同步？</h2><p class="field hint">這台裝置之後存檔不會再更新 Google 日曆。Google 上的「${GCAL_NAME}」不會被刪除，不要的話可到 Google 日曆設定裡自行刪除該日曆。</p>
       <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" id="gOff2">停用</button></div>`);
     modal.querySelector("#gOff2").addEventListener("click",()=>{ try{ if(window.google&&gTok) google.accounts.oauth2.revoke(gTok.t); }catch(e){} gcal=null; gTok=null; saveG(); try{ localStorage.removeItem(GCAL_KEY+"-tok"); }catch(e){} gState={busy:false,err:"",pending:false}; paintG(); closeModal(); toast("已停用 Google 同步"); }); });
