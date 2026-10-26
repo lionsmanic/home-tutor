@@ -1078,7 +1078,7 @@ async function pullCloud(){
 function schedulePush(){ if(!gcal||!gcal.clientId) return; calDirty=true; gState.pending=true; paintG(); clearTimeout(gTimer);
   if(!tokOk()){ askToken(); return; }               // 存檔是點按觸發，登入視窗可以跳出；已授權過會自動關閉
   gTimer=setTimeout(gSyncNow,1200); }
-async function gSyncNow(){
+async function gSyncNow(force){
   if(!gcal||!gcal.clientId) return;
   if(!tokOk()){ askToken(); return; }
   if(gState.busy){ clearTimeout(gTimer); gTimer=setTimeout(gSyncNow,1500); return; }
@@ -1086,7 +1086,9 @@ async function gSyncNow(){
   try{
     const {push}=await pullCloud();
     if(push) await cloudWrite();
-    if(calDirty||!gcal.last||!gcal.calendarId){ gState.res=await reconcile(); gcal.last=Date.now(); calDirty=false; }
+    // Google 上的內容與目前應有的不一致（改了課、改了提醒、或網頁更新了寫法）就重寫；force=按「立即同步」
+    const sig=hashStr(JSON.stringify(desiredEvents()));
+    if(force||calDirty||!gcal.last||!gcal.calendarId||gcal.sig!==sig){ gState.res=await reconcile(); gcal.last=Date.now(); gcal.sig=sig; calDirty=false; }
     gcal.seen=Date.now(); saveG(); gState.pending=false;
   }catch(e){ gState.err=e.code===401?"Google 登入已過期，請點上方「登入 Google」":e.code===403&&/drive/i.test(e.message)?"請先在 Google Cloud 啟用 Google Drive API":(e.message||"同步失敗"); gState.pending=true; }
   gState.busy=false; paintG();
@@ -1145,7 +1147,7 @@ function openSync(){
       <div class="hint">個別課程可在「編輯課程」另外設定。提醒會跟著課程寫進 Google 日曆，手機 Google 日曆 App 會準時跳通知。</div></div>
     <div class="field"><label>手機／其他電腦</label><div class="hint">打開同一個網址，點上方藍色的「登入 Google」，登入同一個帳號就會載入同一份課表。之後在任何一台修改，另一台切回這頁時會自動更新。</div></div>
     <div class="modal-acts"><button class="btn btn-del" id="gOff">停用</button><button class="btn btn-cancel" id="gNow">立即同步</button><button class="btn btn-save" data-close>完成</button></div>`);
-  modal.querySelector("#gNow").addEventListener("click",()=>{ tokOk()?gSyncNow():askToken(); });
+  modal.querySelector("#gNow").addEventListener("click",()=>{ tokOk()?gSyncNow(true):askToken(()=>gSyncNow(true)); });
   bindRemind(modal.querySelector("#defRemind"),()=>settings.remind||[],v=>{ settings.remind=v||[]; settings.remindSet=true; saveData(); renderAll(); },false);
   modal.querySelector("#gOff").addEventListener("click",()=>{ openModal(`<h2>停用 Google 同步？</h2><p class="field hint">這台裝置之後存檔不會再更新 Google 日曆。Google 上的「${GCAL_NAME}」不會被刪除，不要的話可到 Google 日曆設定裡自行刪除該日曆。</p>
       <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" id="gOff2">停用</button></div>`);
