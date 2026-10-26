@@ -373,7 +373,9 @@ function migrateOld(){ try{ const raw=localStorage.getItem(OLD_STORE_KEY); if(!r
 function saveData(){ updatedAt=Date.now(); try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,settings,updatedAt})); }catch(e){} if(typeof schedulePush==="function") schedulePush(); }
 let updatedAt=0;
 // 共用設定（跟課表一起存、一起同步到雲端）：remind = 預設提醒（課前幾分鐘，可多個）
-let settings={remind:[15]};
+let settings={remind:[60],remindSet:true};
+// 預設提醒改為課前 1 小時：舊資料若還是系統原本的 15 分鐘（使用者沒自己改過），自動換成 60 分鐘
+function normSettings(st){ st=st||{}; if(!st.remindSet){ if(!Array.isArray(st.remind)||(st.remind.length===1&&st.remind[0]===15)) st.remind=[60]; st.remindSet=true; } return st; }
 const REMIND_OPTS=[[5,"5 分"],[10,"10 分"],[15,"15 分"],[30,"30 分"],[60,"1 小時"],[120,"2 小時"],[1440,"前一天"]];
 const remindLabel=m=>m>=1440?(m===1440?"前一天":`${m/1440} 天前`):m>=60?`${m/60} 小時前`:`${m} 分鐘前`;
 const remindOf=c=>Array.isArray(c.remind)?c.remind:(settings.remind||[]);   // 課程沒自訂就用預設；[] = 不提醒
@@ -386,7 +388,7 @@ function migrateTeachers(d){
     (d.courses||[]).forEach(c=>{ if(c.teacherId&&by[c.teacherId]){ const t=by[c.teacherId]; c.tname=c.tname||t.name||""; c.line=c.line||t.line||""; c.email=c.email||t.email||""; c.fb=c.fb||t.fb||""; } delete c.teacherId; });
   }
 }
-function initData(){ const d=loadData(); if(d&&d.courses){ migrateTeachers(d); courses=d.courses; marks=d.marks||{}; if(d.settings) settings=d.settings; updatedAt=d.updatedAt||0; } else { courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; } ensureCids(); }
+function initData(){ const d=loadData(); if(d&&d.courses){ migrateTeachers(d); courses=d.courses; marks=d.marks||{}; settings=normSettings(d.settings); updatedAt=d.updatedAt||0; } else { courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; } ensureCids(); }
 
 /* ---------- 工具 ---------- */
 const DAYS=["週一","週二","週三","週四","週五","週六","週日"];
@@ -894,7 +896,7 @@ function promptShared(data){
     <div class="modal-acts"><button class="btn btn-cancel" data-sharedcancel>不要載入</button><button class="btn btn-save" data-sharedload>載入這份</button></div>`);
 }
 function openImport(){ openModal(`<h2>匯入設定</h2><div class="field"><label>貼上備份的 JSON</label><textarea id="impText" rows="8" placeholder='{"teachers":[...],"courses":[...]}'></textarea></div><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-doimport>匯入</button></div>`); }
-function doImport(){ try{ const d=JSON.parse(modal.querySelector("#impText").value); if(!d.courses)throw 0; migrateTeachers(d); courses=d.courses; marks=d.marks||{}; if(d.settings) settings=d.settings; ensureCids(); saveData(); closeModal(); renderAll(); toast("✅ 已匯入"); }catch(e){ toast("格式不對，請貼完整的 JSON"); } }
+function doImport(){ try{ const d=JSON.parse(modal.querySelector("#impText").value); if(!d.courses)throw 0; migrateTeachers(d); courses=d.courses; marks=d.marks||{}; settings=normSettings(d.settings); ensureCids(); saveData(); closeModal(); renderAll(); toast("✅ 已匯入"); }catch(e){ toast("格式不對，請貼完整的 JSON"); } }
 function resetData(){ openModal(`<h2>清空課表？</h2><p class="field hint">會清掉目前的修改（含請假標記），課表會變成空白。建議先「匯出備份」。</p><div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" data-doreset>還原</button></div>`); }
 function doReset(){ courses=JSON.parse(JSON.stringify(DEFAULT_DATA.courses)); marks={}; ensureCids(); saveData(); closeModal(); renderAll(); toast("已清空課表"); }
 
@@ -921,7 +923,7 @@ document.addEventListener("click",e=>{
   else if(d.addonce!==undefined) openCourseModal(null,{recur:"once",date:d.addonce});
   else if(d.export!==undefined) exportData();
   else if(d.share!==undefined) shareData();
-  else if(d.sharedload!==undefined){ if(pendingShared){ adoptSharedGcal(pendingShared.gcal); courses=pendingShared.courses; marks=pendingShared.marks||{}; if(pendingShared.settings) settings=pendingShared.settings; ensureCids(); saveData(); } pendingShared=null; clearHash(); closeModal(); renderAll(); toast("✅ 已載入分享的課表"); }
+  else if(d.sharedload!==undefined){ if(pendingShared){ adoptSharedGcal(pendingShared.gcal); courses=pendingShared.courses; marks=pendingShared.marks||{}; settings=normSettings(pendingShared.settings); ensureCids(); saveData(); } pendingShared=null; clearHash(); closeModal(); renderAll(); toast("✅ 已載入分享的課表"); }
   else if(d.sharedcancel!==undefined){ pendingShared=null; clearHash(); closeModal(); toast("已保留這台原本的課表"); }
   else if(d.import!==undefined) openImport();
   else if(d.reset!==undefined) resetData();
@@ -1049,7 +1051,7 @@ async function cloudWrite(){
 }
 const sameData=(a,b)=>JSON.stringify({c:a.courses,m:a.marks||{},s:a.settings||null})===JSON.stringify({c:b.courses,m:b.marks||{},s:b.settings||null});
 function adoptCloud(d){
-  courses=d.courses||[]; marks=d.marks||{}; if(d.settings) settings=d.settings; updatedAt=d.updatedAt||Date.now(); ensureCids();
+  courses=d.courses||[]; marks=d.marks||{}; settings=normSettings(d.settings); updatedAt=d.updatedAt||Date.now(); ensureCids();
   try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,settings,updatedAt})); }catch(e){}
   gcal.cloudAt=updatedAt; saveG(); renderAll();
 }
@@ -1144,7 +1146,7 @@ function openSync(){
     <div class="field"><label>手機／其他電腦</label><div class="hint">打開同一個網址，點上方藍色的「登入 Google」，登入同一個帳號就會載入同一份課表。之後在任何一台修改，另一台切回這頁時會自動更新。</div></div>
     <div class="modal-acts"><button class="btn btn-del" id="gOff">停用</button><button class="btn btn-cancel" id="gNow">立即同步</button><button class="btn btn-save" data-close>完成</button></div>`);
   modal.querySelector("#gNow").addEventListener("click",()=>{ tokOk()?gSyncNow():askToken(); });
-  bindRemind(modal.querySelector("#defRemind"),()=>settings.remind||[],v=>{ settings.remind=v||[]; saveData(); renderAll(); },false);
+  bindRemind(modal.querySelector("#defRemind"),()=>settings.remind||[],v=>{ settings.remind=v||[]; settings.remindSet=true; saveData(); renderAll(); },false);
   modal.querySelector("#gOff").addEventListener("click",()=>{ openModal(`<h2>停用 Google 同步？</h2><p class="field hint">這台裝置之後存檔不會再更新 Google 日曆。Google 上的「${GCAL_NAME}」不會被刪除，不要的話可到 Google 日曆設定裡自行刪除該日曆。</p>
       <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-del" id="gOff2">停用</button></div>`);
     modal.querySelector("#gOff2").addEventListener("click",()=>{ try{ if(window.google&&gTok) google.accounts.oauth2.revoke(gTok.t); }catch(e){} gcal=null; gTok=null; saveG(); try{ localStorage.removeItem(GCAL_KEY+"-tok"); }catch(e){} gState={busy:false,err:"",pending:false}; paintG(); closeModal(); toast("已停用 Google 同步"); }); });
