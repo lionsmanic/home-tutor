@@ -756,7 +756,15 @@ function bindFeeFields(){
     const cur=me&&me.fee&&me.fee.packKey&&me.fee.packKey!==me.cid?me.fee.packKey:"";
     const own=me?courses.filter(x=>x!==me&&packKey(x)===myKey&&x.fee&&x.fee.mode==="pack"&&!x.movedFrom):[];
     modal.querySelector("#f_packkey").innerHTML=`<option value="">這堂課自己一張${own.length?`（目前與 ${own.map(slotName).join("、")} 共用）`:""}</option>`
-      +Object.entries(keys).filter(([k])=>k!==myKey||cur).map(([k,xs])=>`<option value="${k}" ${cur===k?"selected":""}>和「${esc(xs[0].title)}」${xs.map(slotName).join("、")} 共用</option>`).join("");
+      +Object.entries(keys).filter(([k])=>k!==myKey||cur).map(([k,xs])=>`<option value="${k}" ${cur===k?"selected":""}>和「${esc(xs[0].title)}${xs[0].tname?" · "+esc(xs[0].tname):""}」共用（${xs.map(slotName).join("、")}）</option>`).join("");
+    // 新增課程：課名＋老師和某張套票相同時，自動選共用（可再改）
+    const sel=modal.querySelector("#f_packkey"), auto=()=>{ if(me||sel.dataset.touched) return;
+      const t=(modal.querySelector("#f_title").value||"").trim(), tn=(modal.querySelector("#f_tname").value||"").trim(); if(!t) return;
+      const hit=Object.entries(keys).find(([k,xs])=>xs.some(x=>x.title===t&&(x.tname||"")===tn)); sel.value=hit?hit[0]:""; };
+    sel.addEventListener("change",()=>{ sel.dataset.touched="1"; });
+    ["#f_title","#f_tname"].forEach(id=>{ const el=modal.querySelector(id); el.addEventListener("input",auto); el.addEventListener("change",auto); });
+    const tpl=modal.querySelector("#f_template"); if(tpl) tpl.addEventListener("change",()=>setTimeout(auto,0));
+    auto();
   }
   const upd=()=>{ const m=mo.value, a=modal.querySelector("#f_feeamt"), pk=modal.querySelector("#feePackBox");
     modal.querySelector("#feeAmtRow").style.display=m?"":"none"; modal.querySelector("#f_feemeth").parentElement.style.display=m?"":"none";
