@@ -1141,13 +1141,13 @@ async function cloudRead(){
   try{ return JSON.parse(r.text); }catch(e){ return null; }
 }
 async function cloudWrite(){
-  const body=JSON.stringify({courses,marks,settings,updatedAt});
+  const body=JSON.stringify({courses,marks,settings,updatedAt,calId:gcal.calendarId||""});
   const id=await cloudFind();
-  if(id){ const r=await gapi(`${DRIVE_UP}/files/${id}?uploadType=media`,{method:"PATCH",body,ok:[404]}); if(r._s!==404){ gcal.cloudAt=updatedAt; saveG(); return; } gcal.fileId=""; }
+  if(id){ const r=await gapi(`${DRIVE_UP}/files/${id}?uploadType=media`,{method:"PATCH",body,ok:[404]}); if(r._s!==404){ gcal.cloudAt=updatedAt; gcal.cloudCal=gcal.calendarId||""; saveG(); return; } gcal.fileId=""; }
   const b="htb"+Math.random().toString(36).slice(2);
   const multi=`--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({name:CLOUD_FILE,parents:["appDataFolder"]})}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`;
   const r=await gapi(`${DRIVE_UP}/files?uploadType=multipart&fields=id`,{method:"POST",body:multi,ctype:"multipart/related; boundary="+b});
-  gcal.fileId=r.id; gcal.cloudAt=updatedAt; saveG();
+  gcal.fileId=r.id; gcal.cloudAt=updatedAt; gcal.cloudCal=gcal.calendarId||""; saveG();
 }
 const sameData=(a,b)=>JSON.stringify({c:a.courses,m:a.marks||{},s:a.settings||null})===JSON.stringify({c:b.courses,m:b.marks||{},s:b.settings||null});
 function adoptCloud(d){
@@ -1162,8 +1162,25 @@ function askWhich(d){ return new Promise(res=>{
   modal.querySelector("#wCloud").onclick=()=>{ closeModal(); res("cloud"); };
   modal.querySelector("#wLocal").onclick=()=>{ closeModal(); res("local"); }; }); }
 // 先拉雲端：雲端較新就載入；這台第一次連結且兩邊都有不同內容時問使用者
+// 收掉這台自己建的重複日曆：能刪整個日曆就刪；不行就清空裡面的活動
+async function retireCalendar(id){
+  const cal="/calendars/"+encodeURIComponent(id);
+  const r=await gapi(cal,{method:"DELETE",ok:[400,403,404,410]});
+  if(r._s<300||r._s===404||r._s===410) return;
+  let pt=""; do{ const l=await gapi(cal+"/events?maxResults=2500"+(pt?"&pageToken="+pt:""),{ok:[403,404]}); if(l._s!==200) return;
+    for(const e of (l.items||[])) await gapi(cal+"/events/"+e.id,{method:"DELETE",ok:[404,410]}); pt=l.nextPageToken||""; }while(pt);
+}
+// 所有裝置共用雲端記錄的那一個日曆
+async function adoptCloudCalendar(d){
+  gcal.cloudCal=(d&&d.calId)||"";
+  if(!gcal.cloudCal||gcal.cloudCal===gcal.calendarId) return;
+  const r=await gapi("/calendars/"+encodeURIComponent(gcal.cloudCal),{ok:[403,404]}); if(r._s!==200) return;   // 雲端那個被刪了 → 用這台的
+  const old=gcal.calendarId; gcal.calendarId=gcal.cloudCal; gcal.last=0; gcal.sig=""; saveG();
+  if(old){ await retireCalendar(old); toast("🧹 已清掉這台裝置多建的重複日曆"); }
+}
 async function pullCloud(){
   const d=await cloudRead();
+  await adoptCloudCalendar(d);
   if(!d||!d.courses){ gcal.linked=true; saveG(); return {push:true}; }
   const localHas=courses.length>0, differ=!sameData(d,{courses,marks});
   if(!differ){ gcal.linked=true; gcal.cloudAt=d.updatedAt||0; saveG(); return {push:(updatedAt||0)>(d.updatedAt||0)}; }
@@ -1189,6 +1206,7 @@ async function gSyncNow(force){
     // Google 上的內容與目前應有的不一致（改了課、改了提醒、或網頁更新了寫法）就重寫；force=按「立即同步」
     const sig=hashStr(JSON.stringify(desiredEvents()));
     if(force||calDirty||!gcal.last||!gcal.calendarId||gcal.sig!==sig){ gState.res=await reconcile(); gcal.last=Date.now(); gcal.sig=sig; calDirty=false; }
+    if((gcal.calendarId||"")!==(gcal.cloudCal||"")) await cloudWrite();   // 把共用日曆記到雲端，讓其他裝置跟著用
     gcal.seen=Date.now(); saveG(); gState.pending=false;
   }catch(e){ gState.err=e.code===401?"Google 登入已過期，請點上方「登入 Google」":e.code===403&&/drive/i.test(e.message)?"請先在 Google Cloud 啟用 Google Drive API":(e.message||"同步失敗"); gState.pending=true; }
   gState.busy=false; paintG();
