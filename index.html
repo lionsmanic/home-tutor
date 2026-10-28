@@ -1045,7 +1045,7 @@ mqMobile.addEventListener("change",renderCalendar);
    單向：以這頁為準，存檔後自動新增／修改／刪除 Google 上對應的活動
    ===================================================================== */
 const GCAL_KEY="home-tutor-gcal-v1", CAL_SCOPE="https://www.googleapis.com/auth/calendar.app.created", DRIVE_SCOPE="https://www.googleapis.com/auth/drive.appdata", GCAL_SCOPE=CAL_SCOPE+" "+DRIVE_SCOPE, GAPI="https://www.googleapis.com/calendar/v3";
-const BUILTIN_CLIENT_ID="";   // 填入你的 OAuth 用戶端 ID 後，任何裝置打開都不用再貼，直接登入即可
+const BUILTIN_CLIENT_ID="195577401078-1jknob27e8pa43b7l9f760cld991ituj.apps.googleusercontent.com";   // 填入你的 OAuth 用戶端 ID 後，任何裝置打開都不用再貼，直接登入即可
 const CLOUD_FILE="home-tutor.json", DRIVE="https://www.googleapis.com/drive/v3", DRIVE_UP="https://www.googleapis.com/upload/drive/v3";
 const GCAL_NAME="Alyssa & Evelyn 課表";
 let gcal=(()=>{ try{ return JSON.parse(localStorage.getItem(GCAL_KEY))||null; }catch(e){ return null; } })();   // {clientId, calendarId, last, fileId, cloudAt, linked}
