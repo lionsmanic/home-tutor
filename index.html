@@ -841,12 +841,23 @@ function openPay(i){
       <div class="field"><label>課程</label><select id="p_course">${list.map(o=>`<option value="${o.k}" ${o.k===k?"selected":""}>${o.c.child}・${esc(o.c.title)}</option>`).join("")}</select>${f.mode?`<div class="hint">${feeLabel(c)}</div>`:`<div class="hint">這門課還沒設定收費方式，仍可記錄付款。</div>`}</div>
       <div class="row2"><div class="field"><label>日期</label><input id="p_date" type="date" value="${defDate}"></div><div class="field"><label>金額</label><input id="p_amt" type="number" inputmode="numeric" min="0" value="${amt}" placeholder="例如 800"></div></div>
       <div class="field"><label>付款方式</label><div class="rchips" id="p_meth">${PAY_METHODS.map(([mk,t])=>`<button type="button" data-pm="${mk}" class="${(f.method||"transfer")===mk?"on":""}">${t}</button>`).join("")}</div></div>
-      <div class="row2" style="${f.mode==="pack"?"":"display:none"}"><div class="field"><label>這次買了幾堂</label><input id="p_cls" type="number" inputmode="numeric" min="0" value="${f.mode==="pack"?(f.packN||10):""}"></div>
-        <div class="field"><label>從哪一堂開始扣</label><input id="p_start" type="date" value="${defDate}"></div></div>
-      ${f.mode==="pack"?`<div class="hint" style="margin:-8px 0 12px">如果是上完第一堂才付款，把「開始扣」改成第一堂的日期。</div>`:""}
+      <div class="field" style="${f.mode==="pack"?"":"display:none"}"><label>這次買了幾堂</label><input id="p_cls" type="number" inputmode="numeric" min="0" value="${f.mode==="pack"?(f.packN||10):""}"></div>
+      ${f.mode==="pack"?`<div class="field"><label>從哪一堂開始扣？（點日期）</label><div class="lv-dates" id="p_startpick"></div><input type="hidden" id="p_start">
+        <div class="hint" id="p_starthint"></div></div>`:""}
       <div class="field"><label>備註（選填）</label><input id="p_note" placeholder="例如：10 月份、現金交給老師"></div>
       <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" id="p_save">儲存</button></div>`);
     modal.querySelector("#p_course").onchange=e=>draw(+e.target.value);
+    if(f.mode==="pack"){
+      const box=modal.querySelector("#p_startpick"), hid=modal.querySelector("#p_start"), hint=modal.querySelector("#p_starthint"), dateIn=modal.querySelector("#p_date");
+      const paint=()=>{ const pd=dateIn.value||ymd(now), opts=upcomingDatesFrom(c,pd).filter(v=>v>=ymd(addDays(parseYmd(pd),-28)));
+        if(!hid.value||!opts.includes(hid.value)) hid.value=opts.find(v=>v>=pd)||opts[opts.length-1]||pd;   // 預設：付款日當天或之後的第一堂
+        box.innerHTML=opts.map(v=>{ const dd=parseYmd(v), mk=getMark(c,v), off=mk&&mk.leave;
+          return `<button type="button" class="dpk-d ${v===hid.value?"on":""} ${off?"was":""}" data-ps="${v}">${dd.getMonth()+1}/${dd.getDate()}<small>${WEEK_CH[isoOf(dd)].slice(1)}${off?" · "+leaveTag(mk):v<=ymd(now)?" · 已上":""}</small></button>`; }).join("");
+        const sd=parseYmd(hid.value), n=+modal.querySelector("#p_cls").value||0, will=n?lessonDates(c,hid.value,ymd(addDays(sd,7*n+120))).slice(0,n):[];
+        hint.innerHTML=`從 <b>${sd.getMonth()+1}/${sd.getDate()}</b> 開始扣${will.length?`，${n} 堂預計用到 <b>${(d=>`${d.getMonth()+1}/${d.getDate()}`)(parseYmd(will[will.length-1]))}</b>（請假、停課不扣，會往後延）`:""}`; };
+      box.onclick=e=>{ const b=e.target.closest("[data-ps]"); if(!b) return; hid.value=b.dataset.ps; paint(); };
+      dateIn.addEventListener("change",()=>{ hid.value=""; paint(); }); modal.querySelector("#p_cls").addEventListener("input",paint); paint();
+    }
     modal.querySelector("#p_meth").onclick=e=>{ const b=e.target.closest("[data-pm]"); if(!b) return; modal.querySelectorAll("#p_meth button").forEach(x=>x.classList.toggle("on",x===b)); };
     modal.querySelector("#p_save").onclick=()=>{ const amount=+modal.querySelector("#p_amt").value; if(!(amount>0)){ toast("請輸入金額"); return; }
       const mb=modal.querySelector("#p_meth .on"), cls=+modal.querySelector("#p_cls").value||0, date=modal.querySelector("#p_date").value||ymd(now);
