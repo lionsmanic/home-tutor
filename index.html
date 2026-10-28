@@ -1205,7 +1205,9 @@ async function gSyncNow(force){
     if(push) await cloudWrite();
     // Google 上的內容與目前應有的不一致（改了課、改了提醒、或網頁更新了寫法）就重寫；force=按「立即同步」
     const sig=hashStr(JSON.stringify(desiredEvents()));
-    if(force||calDirty||!gcal.last||!gcal.calendarId||gcal.sig!==sig){ gState.res=await reconcile(); gcal.last=Date.now(); gcal.sig=sig; calDirty=false; }
+    // 日曆在 Google 上被手動刪掉了 → 視為需要重建
+    let gone=false; if(gcal.calendarId&&!force&&!calDirty&&gcal.sig===sig){ const r=await gapi("/calendars/"+encodeURIComponent(gcal.calendarId),{ok:[403,404]}); gone=r._s!==200; }
+    if(force||calDirty||gone||!gcal.last||!gcal.calendarId||gcal.sig!==sig){ gState.res=await reconcile(); gcal.last=Date.now(); gcal.sig=sig; calDirty=false; }
     if((gcal.calendarId||"")!==(gcal.cloudCal||"")) await cloudWrite();   // 把共用日曆記到雲端，讓其他裝置跟著用
     gcal.seen=Date.now(); saveG(); gState.pending=false;
   }catch(e){ gState.err=e.code===401?"Google 登入已過期，請點上方「登入 Google」":e.code===403&&/drive/i.test(e.message)?"請先在 Google Cloud 啟用 Google Drive API":(e.message||"同步失敗"); gState.pending=true; }
