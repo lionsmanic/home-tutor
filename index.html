@@ -827,8 +827,8 @@ function renderFees(){
   if(meth||kids) h+=`<div class="fee-meth" style="border-bottom:none">${meth}${kids}</div>`;
   box.innerHTML=h+`</div>`;
 }
-// 付款日前 6 週到後 2 週內的上課日（含請假日，讓使用者看得到）
-function upcomingDatesFrom(c,around){ const out=[]; let d=addDays(parseYmd(around),-42); for(let k=0;k<56;k++){ if(occursOnDate(c,d)) out.push(ymd(d)); d=addDays(d,1); } return out; }
+// 付款日前 6 週到後 6 週內的上課日（含請假日，讓使用者看得到）
+function upcomingDatesFrom(c,around){ const out=[]; let d=addDays(parseYmd(around),-42); for(let k=0;k<84;k++){ if(occursOnDate(c,d)) out.push(ymd(d)); d=addDays(d,1); } return out; }
 function openPay(i){
   const fc=courses.map((c,k)=>({c,k})).filter(o=>o.c.fee&&o.c.fee.mode);
   const list=fc.length?fc:courses.map((c,k)=>({c,k}));
