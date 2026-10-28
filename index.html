@@ -278,6 +278,30 @@
   .fee-brk>div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px dashed var(--hair);font-size:13px;}
   .fee-brk>div:last-child{border-bottom:none;} .fee-brk span{color:var(--muted);font-variant-numeric:tabular-nums;} .fee-brk em{font-style:normal;color:var(--clash);font-weight:800;}
   .fee-brk .fee-note{display:block;color:var(--muted);font-size:12px;line-height:1.5;}
+  .fb{border-bottom:1px solid var(--hair);padding:10px 14px 8px;}
+  .fb-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
+  .fb-h b{font-size:15.5px;font-weight:900;} .fb-h small{color:var(--muted);font-size:12px;} .fb-h .sp{flex:1;}
+  .fl{display:grid;grid-template-columns:92px 1fr auto;gap:8px;align-items:center;padding:6px 0;border-top:1px dashed var(--hair);}
+  .fb-h+.fl{border-top:none;}
+  .fl-who{display:flex;align-items:center;gap:2px;white-space:nowrap;} .fl-who b{font-size:13.5px;} .fl-who small{color:var(--muted);font-size:11.5px;margin-left:4px;}
+  .fl-dates{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;}
+  .fl-note{width:100%;color:var(--muted);font-size:11.5px;}
+  .fl-st{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  .dc{display:inline-flex;align-items:center;gap:1px;border-radius:6px;padding:1px 6px;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;border:1px solid var(--hair);background:#fff;color:var(--ink);line-height:1.5;}
+  .dc i{font-style:normal;font-size:10.5px;margin-left:2px;}
+  .dc.paid{background:#2F6FD6;border-color:#2F6FD6;color:#fff;} .dc.used{background:#2A9D8F;border-color:#2A9D8F;color:#fff;}
+  .dc.held{border-color:#9C98A6;} .dc.later{color:#A8A3B4;background:#F7F5F1;border-style:dashed;}
+  .dc.off{color:var(--clash);background:var(--clash-soft);border-color:#F3C0C0;text-decoration:line-through;} .dc.off i{text-decoration:none;}
+  .st-owe{color:var(--clash);font-weight:800;font-size:13px;font-variant-numeric:tabular-nums;} .st-ok{color:#1E7A6F;font-weight:800;font-size:13px;}
+  .fee-btn.sm{padding:4px 10px;font-size:12.5px;}
+  .fb-more{margin-top:4px;font-size:12.5px;color:var(--muted);} .fb-more summary{cursor:pointer;font-weight:700;color:#2F6FD6;font-size:12.5px;list-style:none;}
+  .fb-more summary::before{content:"▸ ";} .fb-more[open] summary::before{content:"▾ ";} .fb-more>div{line-height:1.6;}
+  .paylog{border-bottom:1px solid var(--hair);background:#FCFAF6;} .paylog>summary{padding:9px 14px;cursor:pointer;font-size:13px;font-weight:700;color:var(--muted);list-style:none;}
+  .paylog>summary::before{content:"▸ ";} .paylog[open]>summary::before{content:"▾ ";} .paylog>summary b{color:var(--ink);margin-left:4px;}
+  .fee-legend{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;padding:8px 14px;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--hair);}
+  .fee-legend .dc{padding:0 5px;font-size:10px;margin-right:-6px;}
+  .fee-csv{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--hair);font-size:13px;color:var(--muted);}
+  @media(max-width:560px){ .fl{grid-template-columns:1fr auto;} .fl-dates{grid-column:1/-1;grid-row:2;} }
   .fee-sub{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;font-size:13px;font-weight:800;border-bottom:1px solid var(--hair);background:#fff;}
   .fee-sub span{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;}
   .fee-empty{padding:12px 14px;color:var(--muted);font-size:13px;}
@@ -838,7 +862,7 @@ function monthStats(y,m){
     const pack=f.mode==="pack"?packInfo(c):null;
     // 未付：套票看剩餘堂數（用完了才欠），其他看本月上課費用−本月已付
     const pl=paidLessons(c), legacy=mp.filter(p=>!Array.isArray(p.lessons)).reduce((t,p)=>t+(+p.amount||0),0);
-    const unpaid=all.filter(x=>!pl.has(x));
+    const unpaid=all.filter(x=>!pl.has(x)&&x<=today);   // 未付只算已經上過的課；還沒上的不算
     const lead=f.mode==="pack"&&!seenPack.has(packKey(c)); if(f.mode==="pack") seenPack.add(packKey(c));
     const owe=f.mode==="pack"?(pack?(lead?Math.max(0,-pack.left)*pack.unit:0):due):f.mode==="month"?Math.max(0,due-paid):Math.max(0,unpaid.length*unitCost(c)-legacy);
     const leaves=[]; { let d=parseYmd(first), e=parseYmd(last); while(d<=e){ const ds=ymd(d); if(!c.paused&&occursOnDate(c,d)){ const mk=getMark(c,ds); if(mk&&mk.leave) leaves.push({ds,m:mk}); } d=addDays(d,1); } }
@@ -862,61 +886,47 @@ function feeLabel(c){ const f=c.fee||{};
   return {per:`單堂付費 每堂 ${money(f.amt)}`,hour:c.start&&c.end?`單堂付費 每小時 ${money(f.amt)} × ${hrTxt} 小時 = 每堂 ${money(f.amt*hrs)}`:`單堂付費 每小時 ${money(f.amt)}`,pack:`套票付費 ${f.packN||10} 堂 ${money(f.amt)}`,month:`月費 ${money(f.amt)}`}[f.mode]||""; }
 function renderFees(){
   const box=document.getElementById("fees"); if(!box) return;
-  const y=feeCursor.getFullYear(), m=feeCursor.getMonth(), st=monthStats(y,m);
-  const noFee=courses.filter(c=>!(c.fee&&c.fee.mode)&&!c.paused).length, owe=st.owe;
+  const y=feeCursor.getFullYear(), m=feeCursor.getMonth(), st=monthStats(y,m), today=ymd(now);
+  const noFee=courses.filter(c=>!(c.fee&&c.fee.mode)&&!c.paused&&!c.movedFrom).length, owe=st.owe;
+  const md2=x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;};
+  const kOrd=k=>k==="Alyssa"?0:k==="Evelyn"?1:2, wOrd=c=>c.recur==="once"?8:c.day==="週末"?7.5:(DAY_ISO[c.day]||9);
+  const rowWd=c=>c.movedFrom?`調課`:c.recur==="once"?"單次":(c.day||"").replace("週","週");
+  const status=(o)=>o>0.5?`<span class="st-owe">未付 ${money(o)}</span>`:`<span class="st-ok">✓ 已付清</span>`;
+  // 日期小方塊：paid=已付(藍✓)、used=已扣(綠✓)、held=已上未付、later=還沒上、off=請假停課調課
+  const chip=(d,kind,tag)=>`<span class="dc ${kind}" title="${tag||""}">${kind==="paid"||kind==="used"?"✓":""}${md2(d)}${tag?`<i>${tag}</i>`:""}</span>`;
   let h=`<div class="fee-card"><div class="fee-top"><button class="navbtn" data-feenav="-1">‹</button><span class="navlabel">${y}年${m+1}月</span><button class="navbtn" data-feenav="1">›</button>
     <span class="sp"></span><button class="fee-btn pri" data-pay="">＋ 記一筆付款</button></div>`;
-  // ① 各課程＋本月付款紀錄：依類型分組（套票付費／單堂付費），每組先列課程再列付款
-  // 課程列依科目分組：同一課名一組，組內每行＝孩子＋星期，依孩子、星期排序
-  const rowWd=c=>c.movedFrom?`調課 ${(d=>`${d.getMonth()+1}/${d.getDate()}（${WEEK_CH[isoOf(d)].slice(1)}）`)(parseYmd((c.dates||[c.date])[0]))}`:c.recur==="once"?"指定日期":(c.day||"");
-  const subjectGroups=rows=>{
-    const g={}; rows.forEach(r=>{ (g[r.c.title]=g[r.c.title]||[]).push(r); });
-    const kOrd=k=>k==="Alyssa"?0:k==="Evelyn"?1:2, wOrd=c=>c.recur==="once"?8:c.day==="週末"?7.5:(DAY_ISO[c.day]||9);
-    return Object.entries(g).map(([title,rs])=>{
-      rs.sort((a,b)=>kOrd(a.c.child)-kOrd(b.c.child)||wOrd(a.c)-wOrd(b.c)||sortKey(a.c)-sortKey(b.c));
-      const due=rs.reduce((t,r)=>t+r.due,0), paid=rs.reduce((t,r)=>t+r.paid,0), owe=rs.reduce((t,r)=>t+r.owe,0);
-      const isPack=rs.every(r=>r.c.fee.mode==="pack");
-      return `<div class="subj-h"><b>${esc(title)}</b><span>${isPack?`本月上課 ${money(due)}${paid?` · 本月買套票 ${money(paid)}`:""}${owe>0.5?` · <em>未付 ${money(owe)}</em>`:""}`:`上課 ${money(due)} · 已付 ${money(paid)}${owe>0.5?` · <em>未付 ${money(owe)}</em>`:" · ✓ 已付清"}`}</span></div>`+renderRows(rs); }).join("");
-  };
-  const md2=x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;};
-  const packLine=r=>{ const pk=r.pack, c=r.c;
-    const mine=`本月已扣 ${r.ded.length} 堂${r.ded.length?"："+r.ded.map(md2).join("、"):""}${r.later.length?`<br><span class="dt-next">本月還有：${r.later.map(md2).join("、")}</span>`:""}${r.before.length?`<br><span class="dt-next">起扣前（不在這張套票）：${r.before.map(md2).join("、")}</span>`:""}`;
-    if(!pk.shared) return `套票 ${md2(pk.since)} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂${pk.used?`（${pk.usedDates.map(md2).join("、")}）`:""}${r.later.length?`<br><span class="dt-next">本月還有：${r.later.map(md2).join("、")}</span>`:""}`;
-    if(!r.lead) return `${mine}<br><span class="dt-next">與上面共用同一張套票</span>`;
-    return `共用套票：${pk.grp.filter(x=>!x.movedFrom).map(slotName).join("、")}<br>${md2(pk.since)} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂${pk.used?`（${pk.used2.map(u=>`${kidInit(u.c)} ${md2(u.d)}`).join("、")}）`:""}<br>${mine}`; };
-  // 共用套票：整張套票獨立一欄——剩幾堂、A／E 各在哪幾天上（扣堂），取代一個時段一行
-  const sharedBlock=g=>{ const r0=g[0], c=r0.c, pk=r0.pack, kOrd=k=>k==="Alyssa"?0:k==="Evelyn"?1:2;
-    const val=g.reduce((t,x)=>t+x.due,0), bought=g.reduce((t,x)=>t+x.paid,0);
-    const head=`<b>${esc(c.title)}${c.tname?" · "+esc(c.tname):""}<span class="pk" style="background:#EEF3FB;color:#2F4A75">共用套票</span>${pk?`<span class="pk ${pk.left<=2?"low":""}">剩 ${pk.left} 堂</span>`:`<span class="pk low">尚未記錄繳費</span>`}</b>`;
-    let body=`<small>時段：${g.filter(x=>!x.c.movedFrom).map(x=>`${slotName(x.c)} ${x.c.start||""}${x.c.end?"–"+x.c.end:""}`).join("、")}</small>`;
-    if(pk){
-      body+=`<small>${md2(pk.since)} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂，每堂 ${money(pk.unit)}</small>`;
-      const byK={}; pk.used2.forEach(u=>{ (byK[u.c.child]=byK[u.c.child]||[]).push(u); });
-      Object.keys(byK).sort((a,b)=>kOrd(a)-kOrd(b)).forEach(k=>{ const us=byK[k];
-        body+=`<div class="sp-kid">${kidTag(us[0].c)}<span>${us.length} 堂：${us.map(u=>`${md2(u.d)}${u.c.movedFrom?"(調)":""}`).join("、")}</span></div>`; });
-    }
-    const later=[]; g.forEach(x=>x.later.forEach(d=>later.push({d,c:x.c}))); later.sort((a,b)=>a.d<b.d?-1:1);
-    if(later.length) body+=`<small class="dt-next">本月還有：${later.map(u=>`${kidInit(u.c)} ${md2(u.d)}`).join("、")}${pk&&later.length>pk.left?`（套票只剩 ${Math.max(0,pk.left)} 堂，記得續費）`:""}</small>`;
-    const lv=[]; g.forEach(x=>x.leaves.forEach(l=>lv.push({...l,c:x.c}))); lv.sort((a,b)=>a.ds<b.ds?-1:1);
-    if(lv.length) body+=`<small class="dt-off">不扣堂：${lv.map(l=>`${kidInit(l.c)} ${md2(l.ds)} ${leaveTag(l.m)}`).join("、")}</small>`;
-    const owe=g.reduce((t,x)=>t+x.owe,0);
-    return `<div class="fee-row sp"><div class="info">${head}${body}</div><div class="amt">本月上課 ${money(val)}${bought?`<br>買套票 ${money(bought)}`:""}${owe>0.5?`<br><span class="owe">未付 ${money(owe)}</span>`:""}</div><button class="fee-btn" data-pay="${r0.i}">付款</button></div>`; };
-  const renderRows=rs=>{ const done=new Set(); let out="";
-    rs.forEach(r=>{ if(r.c.fee.mode==="pack"&&r.pack&&r.pack.shared){ const k=packKey(r.c); if(done.has(k)) return; done.add(k);
-        out+=sharedBlock(rs.filter(x=>x.c.fee.mode==="pack"&&packKey(x.c)===k)); }
-      else if(r.c.fee.mode==="pack"&&!r.pack&&packGroup(r.c).length>1){ const k=packKey(r.c); if(done.has(k)) return; done.add(k);
-        out+=sharedBlock(rs.filter(x=>x.c.fee.mode==="pack"&&packKey(x.c)===k)); }
-      else out+=courseRow(r); });
-    return out; };
-  const courseRow=r=>{ const c=r.c, f=c.fee, pk=r.pack;
-    const pkTxt=f.mode==="pack"?(pk?`<span class="pk ${pk.left<=2?"low":""}">剩 ${pk.left} 堂</span>`:`<span class="pk low">尚未記錄繳費</span>`):"";
-    const left=r.owe;
-    return `<div class="fee-row"><div class="info"><b>${kidTag(c)}${rowWd(c)}${pkTxt}</b><small>${f.mode==="pack"&&pk?`${packLine(r)}</small></div>`:`${feeLabel(c).replace(/^(單堂付費|套票付費) /,"")} · ${methName(f.method)}<br>本月 ${r.n} 堂${r.n?`（已上 ${r.held}）`:""}${r.n?`：${r.dates.map(x=>{const dd=parseYmd(x), pd=f.mode!=="month"&&r.pl.has(x);return `<span class="${pd?"dt-paid":x<=ymd(now)?"dt-done":"dt-next"}">${pd?"✓":""}${dd.getMonth()+1}/${dd.getDate()}</span>`;}).join("、")}`:""}
-        ${r.leaves.length?`<br><span class="dt-off">不計費：${r.leaves.map(l=>{const dd=parseYmd(l.ds);return `${dd.getMonth()+1}/${dd.getDate()} ${leaveTag(l.m)}`;}).join("、")}</span>`:""}
-</small></div>`}
-      <div class="amt">${f.mode==="pack"?`上課 ${money(r.due)}${r.lead&&pk&&pk.shared?(()=>{const gp=st.rows.filter(x=>x.c.fee.mode==="pack"&&packKey(x.c)===packKey(c)).reduce((t,x)=>t+x.paid,0);return gp?`<br>買套票 ${money(gp)}`:"";})():r.paid?`<br>買套票 ${money(r.paid)}`:""}${pk&&pk.left<0&&r.lead?`<br><span class="owe">未付 ${money(left)}</span>`:""}`
-        :`上課 ${money(r.due)}<br>已付 ${money(r.paid)}<br><span class="${left>0.5?"owe":"ok"}">${left>0.5?"未付 "+money(left):"✓ 已付清"}</span>`}</div>
-      <button class="fee-btn" data-pay="${r.i}">付款</button></div>`; };
+
+  // ---------- 單堂付費：同科目一組，每行＝孩子＋星期＋日期方塊＋狀態 ----------
+  const singleBlock=(title,rs)=>{
+    rs.sort((a,b)=>kOrd(a.c.child)-kOrd(b.c.child)||wOrd(a.c)-wOrd(b.c)||sortKey(a.c)-sortKey(b.c));
+    const o=rs.reduce((t,r)=>t+r.owe,0), labels=[...new Set(rs.map(r=>feeLabel(r.c).replace(/^(單堂付費|套票付費) /,"")))];
+    const lines=rs.map(r=>{ const c=r.c, f=c.fee;
+      const ds=r.dates.map(x=>chip(x, f.mode!=="month"&&r.pl.has(x)?"paid":x<=today?"held":"later")).join("");
+      const lv=r.leaves.map(l=>chip(l.ds,"off",leaveTag(l.m))).join("");
+      return `<div class="fl"><div class="fl-who">${kidTag(c)}<b>${rowWd(c)}</b><small>${c.start||""}</small></div>
+        <div class="fl-dates">${ds}${lv}${labels.length>1?`<small class="fl-note">${feeLabel(c).replace(/^(單堂付費|套票付費) /,"")}</small>`:""}</div>
+        <div class="fl-st">${status(r.owe)}<button class="fee-btn sm" data-pay="${r.i}">付款</button></div></div>`; }).join("");
+    return `<div class="fb"><div class="fb-h"><b>${esc(title)}</b>${labels.length===1?`<small>${labels[0]} · ${methName(rs[0].c.fee.method).replace(/^\S+ /,"")}</small>`:""}<span class="sp"></span>${status(o)}</div>${lines}</div>`; };
+
+  // ---------- 套票：一張套票一格（共用的合併），每個孩子一行日期方塊 ----------
+  const packBlock=g=>{ const r0=g[0], c=r0.c, pk=r0.pack;
+    const left=pk?`<span class="pk ${pk.left<=2?"low":""}">剩 ${pk.left} 堂</span>`:`<span class="pk low">尚未記錄繳費</span>`;
+    const shared=g.length>1||(pk&&pk.shared);
+    const byK={}; const add=(k,html,dd)=>{ (byK[k]=byK[k]||[]).push({html,dd}); };
+    if(pk) pk.used2.filter(u=>u.d>=st.first&&u.d<=st.last).forEach(u=>add(u.c.child,chip(u.d,"used",u.c.movedFrom?"調":""),u.d));
+    g.forEach(x=>{ x.later.forEach(d=>add(x.c.child,chip(d,"later"),d)); x.before.forEach(d=>add(x.c.child,chip(d,"held","前"),d)); if(!pk) x.dates.filter(d=>d<=today).forEach(d=>add(x.c.child,chip(d,"held"),d));
+      x.leaves.forEach(l=>add(x.c.child,chip(l.ds,"off",leaveTag(l.m)),l.ds)); });
+    const lines=Object.keys(byK).sort((a,b)=>kOrd(a)-kOrd(b)).map(k=>{ const any=g.find(x=>x.c.child===k).c;
+      const items=byK[k].sort((a,b)=>a.dd<b.dd?-1:1);
+      return `<div class="fl"><div class="fl-who">${kidTag(any)}<b>${shared?g.filter(x=>x.c.child===k&&!x.c.movedFrom).map(x=>rowWd(x.c)).join("、"):rowWd(any)}</b></div><div class="fl-dates">${items.map(x=>x.html).join("")}</div></div>`; }).join("");
+    const o=g.reduce((t,x)=>t+x.owe,0), bought=g.reduce((t,x)=>t+x.paid,0);
+    const detail=[`時段：${g.filter(x=>!x.c.movedFrom).map(x=>`${slotName(x.c)} ${x.c.start||""}${x.c.end?"–"+x.c.end:""}`).join("、")}`,
+      pk?`${md2(pk.since)} 起扣 · 共買 ${pk.bought} 堂 · 已扣 ${pk.used} 堂 · 每堂 ${money(pk.unit)}`:"",
+      `本月已扣價值 ${money(g.reduce((t,x)=>t+x.due,0))}${bought?` · 本月買套票 ${money(bought)}`:""}`].filter(Boolean);
+    return `<div class="fb"><div class="fb-h"><b>${esc(c.title)}${c.tname?` · ${esc(c.tname)}`:""}</b>${shared?`<span class="pk" style="background:#EEF3FB;color:#2F4A75">共用</span>`:""}${left}<span class="sp"></span>${o>0.5?status(o):""}<button class="fee-btn sm" data-pay="${r0.i}">付款</button></div>
+      ${lines}<details class="fb-more"><summary>明細</summary>${detail.map(t=>`<div>${t}</div>`).join("")}</details></div>`; };
+
   // 付款紀錄：同一個孩子＋同一課名合併成一格，裡面依星期分行
   const md=x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;};
   const payWd=p=>{ const c=courses.find(x=>x.cid===p.cid)||{}; if(c.recur!=="once"&&c.day) return c.day==="週末"?7.5:(DAY_ISO[c.day]||9);
@@ -932,33 +942,37 @@ function renderFees(){
         return `<div class="pg-line"><span class="pg-wd">${wdName(payWd(p))}</span><span class="pg-what">${methName(p.method).replace(/^\S+ /,"")} · ${what}${p.note?` · ${esc(p.note)}`:""}</span><b>${money(p.amount)}</b><button class="pay-x" data-paydel="${p.id}" title="刪除這筆">✕</button></div>`; }).join("");
       return `<div class="fee-row pg"><div class="info"><b>${c.child?kidTag(c):""}${c.title||"（已刪除的課）"}<span class="pg-tot">${n?`${n} 堂 · `:""}${money(tot)}</span></b>${lines}</div></div>`; }).join("");
   };
-  const payRow=p=>{ const c=courses.find(x=>x.cid===p.cid); const d=parseYmd(p.date);
-    return `<div class="fee-row"><div class="info"><b>${d.getMonth()+1}/${d.getDate()} ${c?kidTag(c)+c.title:"（已刪除的課）"}</b><small>${methName(p.method)}${Array.isArray(p.lessons)&&p.lessons.length?` · 付 ${p.lessons.map(x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;}).join("、")}（${p.lessons.length} 堂）`:""}${p.classes?` · 買 ${p.classes} 堂（每堂 ${money(p.amount/p.classes)}）· ${(d=>`${d.getMonth()+1}/${d.getDate()}`)(parseYmd(p.start||p.date))} 起扣 <button class="linkbtn" data-paystart="${p.id}">改</button>`:""}${p.note?" · "+p.note:""}</small></div>
-      <div class="amt"><b>${money(p.amount)}</b></div><button class="pay-x" data-paydel="${p.id}" title="刪除這筆">✕</button></div>`; };
   const sum=a=>a.reduce((t,p)=>t+(+p.amount||0),0);
   const packRows=st.rows.filter(r=>r.c.fee.mode==="pack"), singleRows=st.rows.filter(r=>r.c.fee.mode!=="pack");
   const packPays=st.mpays.filter(isPackPay), singlePays=st.mpays.filter(p=>!isPackPay(p));
-  const group=(icon,name,rows,ps,emptyTxt)=>{ if(!rows.length&&!ps.length) return "";
-    return `<div class="fee-h">${icon} ${name}<span style="float:right">本月付款 ${ps.length} 筆 · ${money(sum(ps))}</span></div>`
-      +subjectGroups(rows)
-      +`<div class="fee-sub">本月付款紀錄</div>`+(ps.length?payGroups(ps):`<div class="fee-empty">${emptyTxt}</div>`); };
+  const payLog=(ps,empty)=>`<details class="paylog"><summary>本月付款紀錄 <b>${ps.length} 筆 · ${money(sum(ps))}</b></summary>${ps.length?payGroups(ps):`<div class="fee-empty">${empty}</div>`}</details>`;
   if(!st.rows.length&&!st.mpays.length) h+=`<div class="fee-empty">還沒有課程設定收費方式。到上面「課程清單 › 編輯」的「💰 收費方式」設定。</div>`;
-  h+=group("🎫","套票付費",packRows,packPays,"這個月沒有買套票。");
-  h+=group("🧾","單堂付費",singleRows,singlePays,"這個月還沒有單堂付款。");
+  if(packRows.length||packPays.length){
+    const seen=new Set(), blocks=[];
+    packRows.slice().sort((a,b)=>a.c.title.localeCompare(b.c.title)||kOrd(a.c.child)-kOrd(b.c.child)).forEach(r=>{ const k=packKey(r.c); if(seen.has(k)) return; seen.add(k);
+      blocks.push(packBlock(packRows.filter(x=>packKey(x.c)===k).sort((a,b)=>kOrd(a.c.child)-kOrd(b.c.child)||wOrd(a.c)-wOrd(b.c)))); });
+    h+=`<div class="fee-h">🎫 套票付費</div>${blocks.join("")}${payLog(packPays,"這個月沒有買套票。")}`;
+  }
+  if(singleRows.length||singlePays.length){
+    const g={}; singleRows.forEach(r=>{ (g[r.c.title]=g[r.c.title]||[]).push(r); });
+    h+=`<div class="fee-h">🧾 單堂付費</div>${Object.entries(g).map(([t,rs])=>singleBlock(t,rs)).join("")}${payLog(singlePays,"這個月還沒有單堂付款。")}`;
+  }
+  h+=`<div class="fee-legend"><span class="dc paid">✓</span>已付 <span class="dc used">✓</span>套票已扣 <span class="dc held">　</span>已上未付 <span class="dc later">　</span>還沒上 <span class="dc off">　</span>請假／停課（不算錢） <span class="dc held">前</span>套票開始前（不扣）</div>`;
   if(noFee&&st.rows.length) h+=`<div class="fee-empty">另有 ${noFee} 門課還沒設定收費方式（編輯課程即可設定）。</div>`;
-  // ③ CSV 下載
-  h+=`<div class="fee-h">CSV 下載</div><div class="fee-row"><div class="info"><small>${y} 年 ${m+1} 月的各課程費用與付款明細，可用 Excel 開啟</small></div><button class="fee-btn" data-feecsv>⬇ 下載 CSV</button></div>`;
-  // ④ 本月上課費用
-  h+=`<div class="fee-h">本月上課費用</div>
-    <div class="fee-sum"><div><small>本月上課費用</small><b>${money(st.due)}</b></div><div><small>本月已付</small><b>${money(st.paid)}</b></div><div class="${owe>0.5?"owe":""}"><small>未付</small><b>${money(owe)}</b></div></div>`;
+  // CSV
+  h+=`<div class="fee-csv"><span>${y} 年 ${m+1} 月明細</span><button class="fee-btn" data-feecsv>⬇ 下載 CSV</button></div>`;
+  // 本月上課費用
   const meth=PAY_METHODS.filter(([k])=>st.byMeth[k]).map(([k,t])=>`<span>${t} <b>${money(st.byMeth[k])}</b></span>`).join("");
-  const kids=Object.entries(st.byKid).map(([k,v])=>`<span>${k} 本月上課 <b>${money(v.due)}</b></span>`).join("");
-  const S=st.single, P=st.pack;
-  h+=`<div class="fee-brk">
-    ${S.due||S.paid?`<div><b>🧾 單堂付費</b><span>上課 ${money(S.due)} · 已付 ${money(S.paid)} · ${S.owe>0.5?`<em>未付 ${money(S.owe)}</em>`:"✓ 已付清"}</span></div>`:""}
-    ${st.packs.map(k=>`<div><b>🎫 ${esc(k.title)}${k.tname?" · "+esc(k.tname):""} 套票（${k.slots.join("、")}）</b><span>本月已扣 ${k.n} 堂（價值 ${money(k.value)}）${k.later?` · 本月還有 ${k.later} 堂`:""}${k.bought?` · 本月買套票 ${money(k.bought)}`:""}${k.left!==null?` · ${k.left<0?`<em>超用 ${-k.left} 堂，未付 ${money(k.owe)}</em>`:`剩 ${k.left} 堂`}`:" · <em>尚未記錄繳費</em>"}</span></div>`).join("")}
-    <div class="fee-note">本月已付 = 這個月實際付出去的錢（含預買套票）；套票的「上課」是本月已扣堂數的價值，不等於這個月付的錢，所以兩邊不一定相等。</div></div>`;
-  if(meth||kids) h+=`<div class="fee-meth" style="border-bottom:none">${meth}${kids}</div>`;
+  const kids=Object.entries(st.byKid).map(([k,v])=>`<span>${k} 上課 <b>${money(v.due)}</b></span>`).join("");
+  const S=st.single;
+  h+=`<div class="fee-h">本月上課費用</div>
+    <div class="fee-sum"><div><small>上課費用</small><b>${money(st.due)}</b></div><div><small>已付</small><b>${money(st.paid)}</b></div><div class="${owe>0.5?"owe":""}"><small>未付</small><b>${money(owe)}</b></div></div>
+    <details class="fb-more" style="padding:0 14px 10px"><summary>看明細</summary>
+      <div class="fee-brk" style="padding:4px 0 0;border:none">
+      ${S.due||S.paid?`<div><b>🧾 單堂付費</b><span>上課 ${money(S.due)} · 已付 ${money(S.paid)} · ${S.owe>0.5?`<em>未付 ${money(S.owe)}</em>`:"✓ 已付清"}</span></div>`:""}
+      ${st.packs.map(k=>`<div><b>🎫 ${esc(k.title)}${k.tname?" · "+esc(k.tname):""}（${k.slots.join("、")}）</b><span>已扣 ${k.n} 堂 ${money(k.value)}${k.later?` · 還有 ${k.later} 堂`:""}${k.bought?` · 買套票 ${money(k.bought)}`:""}${k.left!==null?` · ${k.left<0?`<em>超用 ${-k.left} 堂</em>`:`剩 ${k.left} 堂`}`:""}</span></div>`).join("")}
+      ${meth||kids?`<div class="fee-meth" style="border:none;padding:6px 0 0">${meth}${kids}</div>`:""}
+      <div class="fee-note">已付 = 這個月實際付出去的錢（含預買套票）；套票的上課費用是本月已扣堂數的價值，所以兩者不一定相等。</div></div></details>`;
   box.innerHTML=h+`</div>`;
 }
 // 付款日前 6 週到後 6 週內的上課日（含請假日，讓使用者看得到）
