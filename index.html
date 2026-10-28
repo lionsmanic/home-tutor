@@ -330,7 +330,7 @@
     <details class="howto">
       <summary>✏️ 使用說明（請假怎麼運作、標記、臨時加課、LINE）</summary>
       <div class="body">
-        <b>請假／停課</b>：點課程 →「📅 請假／老師停課」，可選一天或好幾天、選「我們請假」或「老師停課」、加原因；我們請假可順便用 LINE／Email 通知老師。某天全部不上（出遊、颱風）：點那天（月曆日期、週曆日期列，或手機的「🏖 請假」）→「這天整天請假」。請假和停課的課在 Google 日曆會保留，但標題畫刪除線、變灰色、不跳提醒、標成空閒。LINE 送出方式依裝置不同：<br>
+        <b>請假／停課</b>：點課程 →「📅 請假／老師停課」，可選一天或好幾天、選「我們請假」或「老師停課」、加原因；我們請假可順便用 LINE／Email 通知老師。某天全部不上（出遊、颱風）：點那天（月曆日期、週曆日期列，或手機的「🏖 請假」）→「這天整天請假」。請假和停課的課在 Google 日曆會保留，但標題標示請假／停課、變灰色、不跳提醒、標成空閒。LINE 送出方式依裝置不同：<br>
         ・<b>手機</b>：會打開 LINE 並讓你選老師，訊息(含日期時間)已帶好，點老師→送出。<br>
         ・<b>電腦</b>：會把訊息<b>複製</b>好，請貼到 LINE 電腦版老師的對話送出（電腦瀏覽器無法自動跳進 LINE，這是 LINE 的限制）。<br>
         ・想<b>一鍵直接開某位老師的對話</b>：編輯那堂課，填那位老師的 LINE 連結，之後按請假就會直接開他的對話，訊息已複製、貼上即可。（LINE 不允許把文字自動塞進別人對話，所以一定要貼一下。）<br>
@@ -1075,14 +1075,12 @@ function firstOnOrAfter(ds,isos){ let d=parseYmd(ds); for(let i=0;i<7;i++){ if(i
 const BYDAY={1:"MO",2:"TU",3:"WE",4:"TH",5:"FR",6:"SA",7:"SU"}, icsD=ds=>ds.replace(/-/g,""), icsDT=(ds,hm)=>icsD(ds)+"T"+hm.replace(":","")+"00";
 function hashStr(str){ let h=5381; for(let i=0;i<str.length;i++) h=((h<<5)+h+str.charCodeAt(i))|0; return (h>>>0).toString(36); }
 function stampSince(){ let ch=false; courses.forEach(c=>{ if(c.recur!=="once"&&!c.since){ c.since=ymd(mondayOf(now)); ch=true; } }); if(ch){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,settings,updatedAt})); }catch(e){} } }
-// 刪除線：每個字後面加 U+0336（Google 標題不支援格式，用組合字元畫線）
-const strike=t=>[...t].map(ch=>ch===" "?ch:ch+"̶").join("");
 function desiredEvents(){
   stampSince(); const out={};
-  // off = 這次請假／停課：保留活動、標題加刪除線、灰色、不提醒、狀態「空閒」
+  // off = 這次請假／停課：保留活動、標題標「✕ …（請假／停課）」、灰色、不提醒、狀態「空閒」（中文加刪除線組合字元在 Google 會變方框，故不用）
   const mk=(key,c,ds,extra={},off=null)=>{
     const base=`${kidInit(c)} ${c.title}`;
-    const ev={ summary:off?strike(base)+(c.start?"":"（"+(c.timeNote||"彈性")+"）"):`${base}${c.start?"":"（"+(c.timeNote||"彈性")+"）"}`,
+    const ev={ summary:off?`✕ ${base}（${leaveTag(off)}）`:`${base}${c.start?"":"（"+(c.timeNote||"彈性")+"）"}`,
       description:[off?`❌ ${leaveTitle(off)}`:"", c.child, c.tname?"老師："+c.tname:"", c.goal?"重點："+c.goal:"", "— 由每日課表自動同步，請到課表頁修改"].filter(Boolean).join("\n"),
       colorId:off?"8":(c.child==="Evelyn"?"2":"6"), ...extra };
     if(c.start&&c.end){ ev.start={dateTime:`${ds}T${c.start}:00`,timeZone:"Asia/Taipei"}; ev.end={dateTime:`${ds}T${c.end}:00`,timeZone:"Asia/Taipei"};
