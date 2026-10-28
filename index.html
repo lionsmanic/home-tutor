@@ -330,7 +330,7 @@
     <details class="howto">
       <summary>✏️ 使用說明（請假怎麼運作、標記、臨時加課、LINE）</summary>
       <div class="body">
-        <b>請假／停課</b>：點課程 →「📅 請假／老師停課」，可選一天或好幾天、選「我們請假」或「老師停課」、加原因；我們請假可順便用 LINE／Email 通知老師。某天全部不上（出遊、颱風）：點那天（月曆日期、週曆日期列，或手機的「🏖 請假」）→「這天整天請假」。請假和停課的課不會出現在 Google 日曆，也不會跳提醒。LINE 送出方式依裝置不同：<br>
+        <b>請假／停課</b>：點課程 →「📅 請假／老師停課」，可選一天或好幾天、選「我們請假」或「老師停課」、加原因；我們請假可順便用 LINE／Email 通知老師。某天全部不上（出遊、颱風）：點那天（月曆日期、週曆日期列，或手機的「🏖 請假」）→「這天整天請假」。請假和停課的課在 Google 日曆會保留，但標題畫刪除線、變灰色、不跳提醒、標成空閒。LINE 送出方式依裝置不同：<br>
         ・<b>手機</b>：會打開 LINE 並讓你選老師，訊息(含日期時間)已帶好，點老師→送出。<br>
         ・<b>電腦</b>：會把訊息<b>複製</b>好，請貼到 LINE 電腦版老師的對話送出（電腦瀏覽器無法自動跳進 LINE，這是 LINE 的限制）。<br>
         ・想<b>一鍵直接開某位老師的對話</b>：編輯那堂課，填那位老師的 LINE 連結，之後按請假就會直接開他的對話，訊息已複製、貼上即可。（LINE 不允許把文字自動塞進別人對話，所以一定要貼一下。）<br>
@@ -1075,23 +1075,29 @@ function firstOnOrAfter(ds,isos){ let d=parseYmd(ds); for(let i=0;i<7;i++){ if(i
 const BYDAY={1:"MO",2:"TU",3:"WE",4:"TH",5:"FR",6:"SA",7:"SU"}, icsD=ds=>ds.replace(/-/g,""), icsDT=(ds,hm)=>icsD(ds)+"T"+hm.replace(":","")+"00";
 function hashStr(str){ let h=5381; for(let i=0;i<str.length;i++) h=((h<<5)+h+str.charCodeAt(i))|0; return (h>>>0).toString(36); }
 function stampSince(){ let ch=false; courses.forEach(c=>{ if(c.recur!=="once"&&!c.since){ c.since=ymd(mondayOf(now)); ch=true; } }); if(ch){ try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,settings,updatedAt})); }catch(e){} } }
+// 刪除線：每個字後面加 U+0336（Google 標題不支援格式，用組合字元畫線）
+const strike=t=>[...t].map(ch=>ch===" "?ch:ch+"̶").join("");
 function desiredEvents(){
   stampSince(); const out={};
-  const mk=(key,c,ds,extra={})=>{
-    const ev={ summary:`${kidInit(c)} ${c.title}${c.start?"":"（"+(c.timeNote||"彈性")+"）"}`,
-      description:[c.child, c.tname?"老師："+c.tname:"", c.goal?"重點："+c.goal:"", "— 由每日課表自動同步，請到課表頁修改"].filter(Boolean).join("\n"),
-      colorId:c.child==="Evelyn"?"2":"6", ...extra };
+  // off = 這次請假／停課：保留活動、標題加刪除線、灰色、不提醒、狀態「空閒」
+  const mk=(key,c,ds,extra={},off=null)=>{
+    const base=`${kidInit(c)} ${c.title}`;
+    const ev={ summary:off?strike(base)+(c.start?"":"（"+(c.timeNote||"彈性")+"）"):`${base}${c.start?"":"（"+(c.timeNote||"彈性")+"）"}`,
+      description:[off?`❌ ${leaveTitle(off)}`:"", c.child, c.tname?"老師："+c.tname:"", c.goal?"重點："+c.goal:"", "— 由每日課表自動同步，請到課表頁修改"].filter(Boolean).join("\n"),
+      colorId:off?"8":(c.child==="Evelyn"?"2":"6"), ...extra };
     if(c.start&&c.end){ ev.start={dateTime:`${ds}T${c.start}:00`,timeZone:"Asia/Taipei"}; ev.end={dateTime:`${ds}T${c.end}:00`,timeZone:"Asia/Taipei"};
-      ev.reminders={useDefault:false,overrides:[...new Set(remindOf(c))].filter(m=>m>=0&&m<=40320).sort((a,b)=>a-b).slice(0,5).map(m=>({method:"popup",minutes:m}))}; }
-    else { ev.start={date:ds}; ev.end={date:ymd(addDays(parseYmd(ds),1))}; ev.transparency="transparent"; ev.reminders={useDefault:false,overrides:[]}; }
+      ev.reminders={useDefault:false,overrides:off?[]:[...new Set(remindOf(c))].filter(m=>m>=0&&m<=40320).sort((a,b)=>a-b).slice(0,5).map(m=>({method:"popup",minutes:m}))}; }
+    else { ev.start={date:ds}; ev.end={date:ymd(addDays(parseYmd(ds),1))}; ev.reminders={useDefault:false,overrides:[]}; }
+    if(off||!(c.start&&c.end)) ev.transparency="transparent";
     const h=hashStr(JSON.stringify(ev)); ev.extendedProperties={private:{app:"home-tutor",h}}; out[gid(key)]=ev; };
   courses.forEach(c=>{
     if(c.paused) return;
-    if(c.recur==="once"){ onceDates(c).forEach(ds=>{ const m=getMark(c,ds); if(!(m&&m.leave)) mk(c.cid+"|"+ds,c,ds); }); return; }
+    if(c.recur==="once"){ onceDates(c).forEach(ds=>{ const m=getMark(c,ds); mk(c.cid+"|"+ds,c,ds,{},m&&m.leave?m:null); }); return; }
     const isos=c.day==="週末"?[6,7]:[DAY_ISO[c.day]||1], start=firstOnOrAfter(c.since||ymd(mondayOf(now)),isos);
-    const ex=Object.keys(marks).filter(k=>k.startsWith(c.cid+"__")&&marks[k].leave).map(k=>k.split("__")[1]).filter(ds=>ds>=start).sort()
-      .map(ds=>c.start?"EXDATE;TZID=Asia/Taipei:"+icsDT(ds,c.start):"EXDATE;VALUE=DATE:"+icsD(ds));
+    const offDays=Object.keys(marks).filter(k=>k.startsWith(c.cid+"__")&&marks[k].leave).map(k=>k.split("__")[1]).filter(ds=>ds>=start&&isos.includes(isoOf(parseYmd(ds)))).sort();
+    const ex=offDays.map(ds=>c.start?"EXDATE;TZID=Asia/Taipei:"+icsDT(ds,c.start):"EXDATE;VALUE=DATE:"+icsD(ds));
     mk(c.cid,c,start,{recurrence:["RRULE:FREQ=WEEKLY;BYDAY="+isos.map(i=>BYDAY[i]).join(","),...ex]});
+    offDays.forEach(ds=>mk(c.cid+"|off|"+ds,c,ds,{},getMark(c,ds)));      // 從重複活動拿掉那次，另外放一個灰色的取消活動
   });
   return out;
 }
