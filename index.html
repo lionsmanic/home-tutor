@@ -260,6 +260,7 @@
   .fee-row .amt{text-align:right;font-variant-numeric:tabular-nums;font-size:13px;line-height:1.5;white-space:nowrap;}
   .fee-row .amt .owe{color:var(--clash);font-weight:800;} .fee-row .amt .ok{color:#1E7A6F;font-weight:800;}
   .fee-h{padding:8px 14px;font-size:12.5px;font-weight:800;color:var(--muted);background:#FBF8F2;border-bottom:1px solid var(--hair);}
+  .dt-done{color:var(--ink);font-weight:700;} .dt-next{color:#A8A3B4;} .dt-off{color:var(--clash);}
   .fee-sub{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;font-size:13px;font-weight:800;border-bottom:1px solid var(--hair);background:#fff;}
   .fee-sub span{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;}
   .fee-empty{padding:12px 14px;color:var(--muted);font-size:13px;}
@@ -757,11 +758,12 @@ function lessonDates(c,from,to){ // from/to: ymd（含），排除請假／停�
 }
 const durH=c=>c.start&&c.end?Math.max(0,toMin(c.end)-toMin(c.start))/60:1;
 function packInfo(c){ // 套票：買了幾堂、上了幾堂、剩幾堂、每堂折算
-  const ps=pays().filter(p=>p.cid===c.cid&&p.classes>0).sort((a,b)=>a.date<b.date?-1:1);
+  const st=p=>p.start||p.date;
+  const ps=pays().filter(p=>p.cid===c.cid&&p.classes>0).sort((a,b)=>st(a)<st(b)?-1:1);
   if(!ps.length) return null;
   const bought=ps.reduce((t,p)=>t+(+p.classes||0),0), paid=ps.reduce((t,p)=>t+(+p.amount||0),0);
-  const used=lessonDates(c,ps[0].date,ymd(now)).length, unit=bought?paid/bought:0;
-  return {bought,used,left:bought-used,unit,since:ps[0].date};
+  const usedDates=lessonDates(c,st(ps[0]),ymd(now)), used=usedDates.length, unit=bought?paid/bought:0;
+  return {bought,used,usedDates,left:bought-used,unit,since:st(ps[0])};
 }
 function unitCost(c){ const f=c.fee||{};
   if(f.mode==="per") return +f.amt||0;
@@ -777,7 +779,8 @@ function monthStats(y,m){
     const pack=f.mode==="pack"?packInfo(c):null;
     // 未付：套票看剩餘堂數（用完了才欠），其他看本月上課費用−本月已付
     const owe=f.mode==="pack"?(pack?Math.max(0,-pack.left)*pack.unit:due):Math.max(0,due-paid);
-    return {c,i,n:all.length,held,due,paid,pack,owe};
+    const leaves=[]; { let d=parseYmd(first), e=parseYmd(last); while(d<=e){ const ds=ymd(d); if(!c.paused&&occursOnDate(c,d)){ const mk=getMark(c,ds); if(mk&&mk.leave) leaves.push({ds,m:mk}); } d=addDays(d,1); } }
+    return {c,i,n:all.length,held,due,paid,pack,owe,dates:all,leaves};
   }).filter(Boolean);
   const mpays=pays().filter(p=>p.date>=first&&p.date<=last).sort((a,b)=>a.date<b.date?-1:1);
   const byMeth={}; mpays.forEach(p=>byMeth[p.method]=(byMeth[p.method]||0)+(+p.amount||0));
@@ -799,14 +802,16 @@ function renderFees(){
   h+=st.rows.length?st.rows.map(r=>{ const c=r.c, f=c.fee, pk=r.pack;
     const pkTxt=f.mode==="pack"?(pk?`<span class="pk ${pk.left<=2?"low":""}">剩 ${pk.left} 堂${pk.left>0?` · ${money(pk.left*pk.unit)}`:""}</span>`:`<span class="pk low">尚未記錄繳費</span>`):"";
     const left=r.owe;
-    return `<div class="fee-row"><div class="info"><b>${kidTag(c)}${c.title}${pkTxt}</b><small>${feeLabel(c)} · ${methName(f.method)}<br>本月 ${r.n} 堂${r.n?`（已上 ${r.held}）`:""}</small></div>
+    return `<div class="fee-row"><div class="info"><b>${kidTag(c)}${c.title}${pkTxt}</b><small>${feeLabel(c)} · ${methName(f.method)}<br>本月 ${r.n} 堂${r.n?`（已上 ${r.held}）`:""}${r.n?`：${r.dates.map(x=>{const dd=parseYmd(x);return `<span class="${x<=ymd(now)?"dt-done":"dt-next"}">${dd.getMonth()+1}/${dd.getDate()}</span>`;}).join("、")}`:""}
+        ${r.leaves.length?`<br><span class="dt-off">不計費：${r.leaves.map(l=>{const dd=parseYmd(l.ds);return `${dd.getMonth()+1}/${dd.getDate()} ${leaveTag(l.m)}`;}).join("、")}</span>`:""}
+        ${pk?`<br>套票 ${(d=>`${d.getMonth()+1}/${d.getDate()}`)(parseYmd(pk.since))} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂${pk.used?`（${pk.usedDates.map(x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;}).join("、")}）`:""}`:""}</small></div>
       <div class="amt">上課 ${money(r.due)}<br>已付 ${money(r.paid)}${f.mode==="pack"&&pk&&pk.left>=0?"":`<br><span class="${left>0.5?"owe":"ok"}">${left>0.5?"未付 "+money(left):"✓ 已付清"}</span>`}</div>
       <button class="fee-btn" data-pay="${r.i}">付款</button></div>`; }).join("")
     :`<div class="fee-empty">還沒有課程設定收費方式。到上面「課程清單 › 編輯」的「💰 收費方式」設定。</div>`;
   if(noFee&&st.rows.length) h+=`<div class="fee-empty">另有 ${noFee} 門課還沒設定收費方式（編輯課程即可設定）。</div>`;
   // ② 本月付款紀錄
   const payRow=p=>{ const c=courses.find(x=>x.cid===p.cid); const d=parseYmd(p.date);
-    return `<div class="fee-row"><div class="info"><b>${d.getMonth()+1}/${d.getDate()} ${c?kidTag(c)+c.title:"（已刪除的課）"}</b><small>${methName(p.method)}${p.classes?` · 買 ${p.classes} 堂（每堂 ${money(p.amount/p.classes)}）`:""}${p.note?" · "+p.note:""}</small></div>
+    return `<div class="fee-row"><div class="info"><b>${d.getMonth()+1}/${d.getDate()} ${c?kidTag(c)+c.title:"（已刪除的課）"}</b><small>${methName(p.method)}${p.classes?` · 買 ${p.classes} 堂（每堂 ${money(p.amount/p.classes)}）· ${(d=>`${d.getMonth()+1}/${d.getDate()}`)(parseYmd(p.start||p.date))} 起扣 <button class="linkbtn" data-paystart="${p.id}">改</button>`:""}${p.note?" · "+p.note:""}</small></div>
       <div class="amt"><b>${money(p.amount)}</b></div><button class="pay-x" data-paydel="${p.id}" title="刪除這筆">✕</button></div>`; };
   const packPays=st.mpays.filter(isPackPay), singlePays=st.mpays.filter(p=>!isPackPay(p)), sum=a=>a.reduce((t,p)=>t+(+p.amount||0),0);
   h+=`<div class="fee-h">本月付款紀錄</div>`;
@@ -822,6 +827,8 @@ function renderFees(){
   if(meth||kids) h+=`<div class="fee-meth" style="border-bottom:none">${meth}${kids}</div>`;
   box.innerHTML=h+`</div>`;
 }
+// 付款日前 6 週到後 2 週內的上課日（含請假日，讓使用者看得到）
+function upcomingDatesFrom(c,around){ const out=[]; let d=addDays(parseYmd(around),-42); for(let k=0;k<56;k++){ if(occursOnDate(c,d)) out.push(ymd(d)); d=addDays(d,1); } return out; }
 function openPay(i){
   const fc=courses.map((c,k)=>({c,k})).filter(o=>o.c.fee&&o.c.fee.mode);
   const list=fc.length?fc:courses.map((c,k)=>({c,k}));
@@ -834,14 +841,17 @@ function openPay(i){
       <div class="field"><label>課程</label><select id="p_course">${list.map(o=>`<option value="${o.k}" ${o.k===k?"selected":""}>${o.c.child}・${esc(o.c.title)}</option>`).join("")}</select>${f.mode?`<div class="hint">${feeLabel(c)}</div>`:`<div class="hint">這門課還沒設定收費方式，仍可記錄付款。</div>`}</div>
       <div class="row2"><div class="field"><label>日期</label><input id="p_date" type="date" value="${defDate}"></div><div class="field"><label>金額</label><input id="p_amt" type="number" inputmode="numeric" min="0" value="${amt}" placeholder="例如 800"></div></div>
       <div class="field"><label>付款方式</label><div class="rchips" id="p_meth">${PAY_METHODS.map(([mk,t])=>`<button type="button" data-pm="${mk}" class="${(f.method||"transfer")===mk?"on":""}">${t}</button>`).join("")}</div></div>
-      <div class="field" style="${f.mode==="pack"?"":"display:none"}"><label>這次買了幾堂（套票）</label><input id="p_cls" type="number" inputmode="numeric" min="0" value="${f.mode==="pack"?(f.packN||10):""}"></div>
+      <div class="row2" style="${f.mode==="pack"?"":"display:none"}"><div class="field"><label>這次買了幾堂</label><input id="p_cls" type="number" inputmode="numeric" min="0" value="${f.mode==="pack"?(f.packN||10):""}"></div>
+        <div class="field"><label>從哪一堂開始扣</label><input id="p_start" type="date" value="${defDate}"></div></div>
+      ${f.mode==="pack"?`<div class="hint" style="margin:-8px 0 12px">如果是上完第一堂才付款，把「開始扣」改成第一堂的日期。</div>`:""}
       <div class="field"><label>備註（選填）</label><input id="p_note" placeholder="例如：10 月份、現金交給老師"></div>
       <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" id="p_save">儲存</button></div>`);
     modal.querySelector("#p_course").onchange=e=>draw(+e.target.value);
     modal.querySelector("#p_meth").onclick=e=>{ const b=e.target.closest("[data-pm]"); if(!b) return; modal.querySelectorAll("#p_meth button").forEach(x=>x.classList.toggle("on",x===b)); };
     modal.querySelector("#p_save").onclick=()=>{ const amount=+modal.querySelector("#p_amt").value; if(!(amount>0)){ toast("請輸入金額"); return; }
       const mb=modal.querySelector("#p_meth .on"), cls=+modal.querySelector("#p_cls").value||0, date=modal.querySelector("#p_date").value||ymd(now);
-      pays().push({id:"p_"+Math.random().toString(36).slice(2,9),cid:c.cid,date,amount,method:mb?mb.dataset.pm:"other",...(f.mode==="pack"&&cls?{classes:cls}:{}),note:(modal.querySelector("#p_note").value||"").trim()});
+      const pst=(modal.querySelector("#p_start")||{}).value||"";
+      pays().push({id:"p_"+Math.random().toString(36).slice(2,9),cid:c.cid,date,amount,method:mb?mb.dataset.pm:"other",...(f.mode==="pack"&&cls?{classes:cls,...(pst&&pst!==date?{start:pst}:{})}:{}),note:(modal.querySelector("#p_note").value||"").trim()});
       const pd=parseYmd(date); feeCursor=new Date(pd.getFullYear(),pd.getMonth(),1);
       saveData(); closeModal(); renderAll(); toast(`✅ 已記錄 ${money(amount)}`); };
   };
@@ -857,11 +867,16 @@ function feeCSV(){
   a.href=URL.createObjectURL(blob); a.download=`課程費用_${y}-${pad(m+1)}.csv`; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
 }
 document.addEventListener("click",e=>{
-  const b=e.target.closest("[data-feenav],[data-pay],[data-paydel],[data-feecsv]"); if(!b) return; const d=b.dataset;
+  const b=e.target.closest("[data-feenav],[data-pay],[data-paydel],[data-feecsv],[data-paystart]"); if(!b) return; const d=b.dataset;
   if(d.feenav){ feeCursor=new Date(feeCursor.getFullYear(),feeCursor.getMonth()+(+d.feenav),1); renderFees(); }
   else if(d.pay!==undefined) openPay(d.pay);
   else if(d.paydel){ const p=pays().find(x=>x.id===d.paydel); if(p&&confirm(`刪除這筆 ${money(p.amount)} 的付款紀錄？`)){ settings.pays=pays().filter(x=>x.id!==d.paydel); saveData(); renderAll(); } }
   else if(d.feecsv!==undefined) feeCSV();
+  else if(d.paystart){ const p=pays().find(x=>x.id===d.paystart); if(!p) return; const c=courses.find(x=>x.cid===p.cid)||{};
+    const opts=upcomingDatesFrom(c,p.date);
+    openModal(`<h2>套票從哪一堂開始扣？</h2><p class="field hint">${c.title||""}：${money(p.amount)}、${p.classes} 堂。點第一堂要扣的日期：</p><div class="lv-dates">${opts.map(v=>{const dd=parseYmd(v);return `<button type="button" class="dpk-d ${v===(p.start||p.date)?"on":""}" data-psd="${v}">${dd.getMonth()+1}/${dd.getDate()}<small>${WEEK_CH[isoOf(dd)].slice(1)}</small></button>`;}).join("")}</div>
+      <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button></div>`);
+    modal.querySelector(".lv-dates").onclick=e=>{ const b=e.target.closest("[data-psd]"); if(!b) return; p.start=b.dataset.psd; if(p.start===p.date) delete p.start; saveData(); closeModal(); renderAll(); toast("✅ 已更新開始扣堂日期"); }; }
 });
 
 /* ---------- 請假／停課視窗：選日期（可多選）＋誰取消＋原因 ---------- */
