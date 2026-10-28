@@ -242,6 +242,11 @@
   .wsep{position:relative;z-index:1;font-size:22px;font-weight:900;}
   .seg{display:flex;gap:6px;}
   .rchips{display:flex;flex-wrap:wrap;gap:6px;}
+  .lv-dates{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;}
+  .lv-dates .dpk-d{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:6px 0;}
+  .lv-dates .dpk-d small{font-size:10.5px;font-weight:700;opacity:.75;}
+  .lv-dates .dpk-d.was:not(.on){background:var(--clash-soft);border-color:#F3C0C0;color:#9A2A2A;}
+  .btn[disabled]{opacity:.45;pointer-events:none;}
   .rchips button{border:1.5px solid var(--hair);background:#fff;border-radius:999px;padding:7px 12px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);}
   .rchips button.on{background:var(--ink);border-color:var(--ink);color:#fff;}
   .rchips button.none.on{background:#6E6D78;border-color:#6E6D78;}
@@ -325,7 +330,7 @@
     <details class="howto">
       <summary>✏️ 使用說明（請假怎麼運作、標記、臨時加課、LINE）</summary>
       <div class="body">
-        <b>請假（不用先設定 LINE 連結）</b>：點課程 → 按「用 LINE 請假」。一按請假，那堂課就會在課表上標「請假」並畫線，按錯可在詳情「取消標記」。送出方式依裝置不同：<br>
+        <b>請假／停課</b>：點課程 →「📅 請假／老師停課」，可選一天或好幾天、選「我們請假」或「老師停課」、加原因；我們請假可順便用 LINE／Email 通知老師。某天全部不上（出遊、颱風）：點那天（月曆日期、週曆日期列，或手機的「🏖 請假」）→「這天整天請假」。請假和停課的課不會出現在 Google 日曆，也不會跳提醒。LINE 送出方式依裝置不同：<br>
         ・<b>手機</b>：會打開 LINE 並讓你選老師，訊息(含日期時間)已帶好，點老師→送出。<br>
         ・<b>電腦</b>：會把訊息<b>複製</b>好，請貼到 LINE 電腦版老師的對話送出（電腦瀏覽器無法自動跳進 LINE，這是 LINE 的限制）。<br>
         ・想<b>一鍵直接開某位老師的對話</b>：編輯那堂課，填那位老師的 LINE 連結，之後按請假就會直接開他的對話，訊息已複製、貼上即可。（LINE 不允許把文字自動塞進別人對話，所以一定要貼一下。）<br>
@@ -439,7 +444,9 @@ function nextDateFor(c){ if(c.recur==="once") return nextOnce(c); if(c.day==="�
 /* marks：以 課程cid + 日期 為 key */
 const mkey=(c,ds)=>c.cid+"__"+ds;
 const getMark=(c,ds)=>marks[mkey(c,ds)]||null;
-function setLeave(c,ds,v){ const k=mkey(c,ds),m=marks[k]||{}; m.leave=v; if(!m.leave&&!m.note) delete marks[k]; else marks[k]=m; saveData(); }
+function setLeave(c,ds,v,by,reason,noSave){ const k=mkey(c,ds),m=marks[k]||{}; m.leave=v; if(v){ m.by=by||m.by||"us"; if(reason!==undefined) m.reason=reason; } else { delete m.by; delete m.reason; } if(!m.leave&&!m.note) delete marks[k]; else marks[k]=m; if(!noSave) saveData(); }
+const leaveTag=m=>m&&m.leave?(m.by==="teacher"?"停課":"請假"):"";
+const leaveTitle=m=>m&&m.leave?(m.by==="teacher"?"老師停課":"我們請假")+(m.reason?"："+m.reason:""):"";
 function setNote(c,ds,n){ const k=mkey(c,ds),m=marks[k]||{}; m.note=n; if(!m.leave&&!m.note) delete marks[k]; else marks[k]=m; saveData(); }
 
 function overlap(a,b){ return a.start&&a.end&&b.start&&b.end && toMin(a.start)<toMin(b.end)&&toMin(b.start)<toMin(a.end); }
@@ -457,7 +464,7 @@ function conflictsOn(d){
 function evBadges(c,ds,clash){
   const m=getMark(c,ds); let h="";
   if(clash) h+=`<span class="ev-b clash">⚠️</span>`;
-  if(m&&m.leave) h+=`<span class="ev-b leave">請假</span>`;
+  if(m&&m.leave) h+=`<span class="ev-b leave" title="${esc(leaveTitle(m))}">${leaveTag(m)}</span>`;
   if(m&&m.note) h+=`<span class="ev-b">📝</span>`;
   return h?`<span class="ev-badges">${h}</span>`:"";
 }
@@ -472,7 +479,7 @@ function renderToday(){
   box.className="today-grid";
   box.innerHTML=list.map(o=>{
     const c=o.c, m=getMark(c,ds);
-    let tags=""; if(set.has(o.i)) tags+=`<span class="clashtag">⚠️ 衝堂</span>`; if(m&&m.leave) tags+=`<span class="agz-tag leave">請假</span>`; if(m&&m.note) tags+=`<span class="agz-tag note">📝</span>`;
+    let tags=""; if(set.has(o.i)) tags+=`<span class="clashtag">⚠️ 衝堂</span>`; if(m&&m.leave) tags+=`<span class="agz-tag leave">${leaveTag(m)}</span>`; if(m&&m.note) tags+=`<span class="agz-tag note">📝</span>`;
     return `<button class="row ${childClass(c)} ${m&&m.leave?'':''}" data-detail="${o.i}" data-date="${ds}" style="width:100%;text-align:left;background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);cursor:pointer;font-family:inherit;${m&&m.leave?'opacity:.6;':''}">
       <div class="info"><b>${displayTime(c)}</b> ${tags}<br><b>${kidTag(c)}${c.title}</b></div></button>`;
   }).join("");
@@ -508,7 +515,7 @@ function renderWeekGrid(){
   dates.forEach(d=>{
     const ds=ymd(d), dayName=WEEK_CH[isoOf(d)], iso=isoOf(d), {set}=conflictsOn(d);
     const st=(sameYmd(d,now)?" now":"")+(iso>=6?" we":"");
-    heads+=`<div class="wk-h${st}"><span class="wd">${dayName}</span><span class="dn">${d.getDate()}</span></div>`;
+    heads+=`<div class="wk-h${st}" data-dayopen="${ds}" style="cursor:pointer" title="看這天／整天請假"><span class="wd">${dayName}</span><span class="dn">${d.getDate()}</span></div>`;
     const flex=courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)&&!(o.c.start&&o.c.end));
     if(flex.length) hasAll=true;
     all+=`<div class="wk-all${sameYmd(d,now)?' now':''}">`+flex.map(o=>{const m=getMark(o.c,ds);return `<button class="allchip ${childClass(o.c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}" title="${esc(o.c.title)}">${kidTag(o.c)}${o.c.timeNote?o.c.timeNote+" · ":""}${o.c.title}</button>`;}).join("")+`</div>`;
@@ -528,12 +535,12 @@ function renderWeekGrid(){
 }
 function agzRow(o,ds){
   const c=o.c, m=getMark(c,ds); let tag="";
-  if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
+  if(m&&m.leave)tag+=`<span class="agz-tag leave">${leaveTag(m)}</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
   return `<button class="agz-ev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="agz-time">${displayTime(c)}</span><span class="agz-body"><b>${kidTag(c)}${c.title}</b></span>${tag}</button>`;
 }
 function agzClashCard(o,ds){
   const c=o.c, m=getMark(c,ds); let tag="";
-  if(m&&m.leave)tag+=`<span class="agz-tag leave">請假</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
+  if(m&&m.leave)tag+=`<span class="agz-tag leave">${leaveTag(m)}</span>`; else if(m&&m.note)tag+=`<span class="agz-tag note">📝</span>`;
   return `<button class="agz-cev ${childClass(c)} ${m&&m.leave?'leave':''}" data-detail="${o.i}" data-date="${ds}"><span class="cev-t">${kidTag(c)}${displayTime(c)}</span><span class="cev-ti">${c.title}</span>${tag}</button>`;
 }
 function dayItemsHtml(d,ds){
@@ -564,7 +571,7 @@ function renderWeekAgenda(){
     const label=`${dayName} ${d.getMonth()+1}/${d.getDate()}${isNow?' · 今天':''}`;
     if(!courses.some(c=>occursOnDate(c,d))){ offs.push(`<div class="agz-off ${isNow?'now':''}"><b>${label}</b><span>沒課</span><button class="agz-add" data-addday="${dayName}">＋</button></div>`); return; }
     flushOffs();
-    html+=`<div class="agz-day ${isNow?'now':''}"><div class="agz-h"><span>${label}</span><button class="agz-add" data-addday="${dayName}">＋ 加課</button></div>${dayItemsHtml(d,ds)}</div>`;
+    html+=`<div class="agz-day ${isNow?'now':''}"><div class="agz-h"><span>${label}</span><span style="display:flex;gap:6px"><button class="agz-add" data-dayleave="${ds}">🏖 請假</button><button class="agz-add" data-addday="${dayName}">＋ 加課</button></span></div>${dayItemsHtml(d,ds)}</div>`;
   });
   flushOffs();
   return html;
@@ -619,7 +626,7 @@ function renderCourseList(){
     const rows=courses.map((c,i)=>({c,i})).filter(o=>o.c.child===kid)
       .sort((a,b)=>(a.c.recur==="once"?1:0)-(b.c.recur==="once"?1:0)||(DAY_ISO[a.c.day]||99)-(DAY_ISO[b.c.day]||99)||sortKey(a.c)-sortKey(b.c))
       .map(o=>{ const c=o.c, st=schedLabel(c);
-        const leave=c.paused?`<button class="mini mini-leave" disabled>暫緩</button>`:`<button class="mini mini-leave" data-leave="${o.i}" data-ds="${nextDateFor(c)}" data-channel="line">請假</button>`;
+        const leave=c.paused?`<button class="mini mini-leave" disabled>暫緩</button>`:`<button class="mini mini-leave" data-openleave="${o.i}" data-ds="${nextDateFor(c)}">請假</button>`;
         return `<div class="row ${cls}"><span class="pill-status ${st[1]}">${st[0]}</span><div class="info"><b>${c.title}</b><small>${displayTime(c)} · ${teacherName(c)}</small></div><div class="acts">${leave}<button class="mini mini-edit" data-edit="${o.i}">編輯</button></div></div>`;
       }).join("");
     return `<div class="list-sub ${cls}">${kid}</div>${rows}`;
@@ -646,20 +653,21 @@ function renderTeachers(){
 function renderAll(){ renderToday(); renderCalendar(); renderCourseList(); renderTeachers(); }
 
 /* ---------- 請假 ---------- */
-function leaveMsg(c,ds){
-  const tname=c.tname?c.tname:"老師", d=parseYmd(ds);
-  const when=`${d.getMonth()+1}/${d.getDate()}（${WEEK_CH[isoOf(d)]}）`;
+function leaveMsg(c,ds,reason){
+  const tname=c.tname?c.tname:"老師", list=(Array.isArray(ds)?ds:[ds]).slice().sort();
+  const when=list.map(x=>{const d=parseYmd(x);return `${d.getMonth()+1}/${d.getDate()}（${WEEK_CH[isoOf(d)]}）`;}).join("、");
   const timeStr=c.start?`${c.start}–${c.end} `:"";
-  return `${tname}您好，我是 ${c.child} 的家長。\n${c.child} ${when} ${timeStr}的「${c.title}」想請假一次，\n不好意思，麻煩老師了，謝謝！🙏`;
+  const why=reason?`因為${reason}，`:"";
+  return `${tname}您好，我是 ${c.child} 的家長。\n${why}${c.child} ${when} ${timeStr}的「${c.title}」想請假${list.length>1?` ${list.length} 次`:"一次"}，\n不好意思，麻煩老師了，謝謝！🙏`;
 }
 function extractLineId(v){ if(!v) return ""; v=v.trim(); const m=v.match(/ti\/p\/~?([A-Za-z0-9._-]+)/); if(m) return m[1]; if(!/^https?:/i.test(v)) return v.replace(/^~/,""); return ""; }
 function launchLine(url){
   if(url.indexOf("line://")===0){ const a=document.createElement("a"); a.href=url; a.style.display="none"; document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(),200); }
   else window.open(url,"_blank");
 }
-function doLeave(i,ds,channel){
-  const c=courses[i],msg=leaveMsg(c,ds);
-  setLeave(c,ds,true);
+function doLeave(i,ds,channel){ setLeave(courses[i],ds,true,"us"); notifyLeave(i,ds,channel); renderAll(); if(backdrop.classList.contains("show")) openCourseDetail(i,ds); }
+function notifyLeave(i,ds,channel,reason){
+  const c=courses[i],msg=leaveMsg(c,ds,reason);
   if(channel==="email"&&c.email){
     window.open(mailUrl(c,`請假通知 - ${c.child} ${c.title}`,msg),"_blank");
     toast("✅ 已標記請假並開啟 Email，內容已填好，按寄出即可");
@@ -678,11 +686,89 @@ function doLeave(i,ds,channel){
       }
     });
   }
-  renderAll();
-  if(backdrop.classList.contains("show")) openCourseDetail(i,ds);
 }
 function copyText(text){ if(navigator.clipboard&&window.isSecureContext) return navigator.clipboard.writeText(text).catch(()=>fallbackCopy(text)); return fallbackCopy(text); }
 function fallbackCopy(text){ return new Promise(res=>{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}document.body.removeChild(ta);res();}); }
+
+/* ---------- 請假／停課視窗：選日期（可多選）＋誰取消＋原因 ---------- */
+function upcomingDates(c,n,incl){ const out=[]; let d=new Date(now); d.setHours(0,0,0,0);
+  for(let k=0;k<200&&out.length<n;k++){ if(occursOnDate(c,d)) out.push(ymd(d)); d=addDays(d,1); }
+  if(incl&&!out.includes(incl)) out.unshift(incl); return out.sort(); }
+const US_REASONS=["生病","家裡有事","出遊","學校活動"], T_REASONS=["老師請假","老師有事","國定假日","場地因素"];
+let lv={i:null,dates:new Set(),by:"us",reason:""};
+function openLeave(i,ds){
+  const c=courses[i]; lv={i,dates:new Set(ds?[ds]:[]),by:"us",reason:""};
+  const m=ds?getMark(c,ds):null; if(m&&m.leave){ lv.by=m.by||"us"; lv.reason=m.reason||""; }
+  renderLeave();
+}
+function renderLeave(){
+  const c=courses[lv.i], list=upcomingDates(c,12,[...lv.dates].find(x=>x<ymd(now)));
+  const chips=list.map(v=>{ const d=parseYmd(v), mk=getMark(c,v), done=mk&&mk.leave;
+    return `<button type="button" class="dpk-d ${lv.dates.has(v)?'on':''} ${done?'was':''}" data-lvd="${v}" title="${done?esc(leaveTitle(mk)):""}">${d.getMonth()+1}/${d.getDate()}<small>${WEEK_CH[isoOf(d)].slice(1)}${done?" · "+leaveTag(mk):""}</small></button>`; }).join("");
+  const reasons=(lv.by==="us"?US_REASONS:T_REASONS).map(r=>`<button type="button" class="${lv.reason===r?'on':''}" data-lvr="${esc(r)}">${r}</button>`).join("");
+  const n=lv.dates.size, us=lv.by==="us";
+  const acts=us
+    ? `<button class="btn leave-big" data-lvgo="line" ${n?"":"disabled"}>📩 標記${n>1?` ${n} 天`:""}並用 LINE 通知老師</button>
+       ${c.email?`<button class="btn leave-big" style="background:var(--email)" data-lvgo="email" ${n?"":"disabled"}>✉️ 標記並用 Email 通知</button>`:""}
+       <button class="btn btn-cancel" style="width:100%;justify-content:center;padding:11px;margin-top:2px" data-lvgo="mark" ${n?"":"disabled"}>只標記，不通知</button>`
+    : `<button class="btn leave-big" style="background:#6E6D78" data-lvgo="mark" ${n?"":"disabled"}>🛑 標記${n>1?` ${n} 天`:""}老師停課</button>`;
+  openModal(`<h2>請假／停課 · ${kidTag(c)}${c.title}</h2>
+    <div class="field"><label>哪一天？（可複選，顯示接下來 12 次）</label><div class="lv-dates">${chips||'<span class="hint">接下來沒有這堂課</span>'}</div></div>
+    <div class="field"><label>誰取消？</label><div class="seg"><button class="${us?'on':''}" data-lvby="us">🙋 我們請假</button><button class="${us?'':'on'}" data-lvby="teacher">👩‍🏫 老師停課</button></div></div>
+    <div class="field"><label>原因（選填）</label><div class="rchips" style="margin-bottom:6px">${reasons}</div><input id="lvReason" value="${esc(lv.reason)}" placeholder="${us?"例如：發燒、全家出遊":"例如：老師出國、颱風"}"></div>
+    ${acts}
+    <div class="modal-acts" style="margin-top:8px"><button class="btn btn-cancel" data-close>取消</button></div>`);
+  modal.querySelector("#lvReason").addEventListener("input",e=>{ lv.reason=e.target.value; });
+}
+function applyLeave(go){
+  const c=courses[lv.i], ds=[...lv.dates].sort(); if(!ds.length) return;
+  const reason=(lv.reason||"").trim();
+  ds.forEach(x=>setLeave(c,x,true,lv.by,reason,true)); saveData(); renderAll(); closeModal();
+  if(go==="line"||go==="email") notifyLeave(lv.i,ds,go,reason);
+  else toast(lv.by==="teacher"?`✅ 已標記老師停課 ${ds.length} 天`:`✅ 已標記請假 ${ds.length} 天`);
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-lvd],[data-lvby],[data-lvr],[data-lvgo],[data-openleave],[data-dayleave],[data-dlby],[data-dlkid],[data-dlgo],[data-dlnotify]"); if(!b) return;
+  const d=b.dataset;
+  if(d.openleave!==undefined) openLeave(+d.openleave, d.ds||null);
+  else if(d.lvd){ lv.dates.has(d.lvd)?lv.dates.delete(d.lvd):lv.dates.add(d.lvd); renderLeave(); }
+  else if(d.lvby){ if(lv.by!==d.lvby){ lv.by=d.lvby; lv.reason=""; } renderLeave(); }
+  else if(d.lvr!==undefined){ lv.reason=lv.reason===d.lvr?"":d.lvr; renderLeave(); }
+  else if(d.lvgo) applyLeave(d.lvgo);
+  else if(d.dayleave) openDayLeave(d.dayleave);
+  else if(d.dlby){ dl.by=d.dlby; dl.reason=""; renderDayLeave(); }
+  else if(d.dlkid){ dl.kids.has(d.dlkid)?dl.kids.delete(d.dlkid):dl.kids.add(d.dlkid); renderDayLeave(); }
+  else if(d.dlgo!==undefined) applyDayLeave();
+  else if(d.dlnotify!==undefined) notifyLeave(+d.dlnotify,dl.ds,d.ch||"line",dl.reason);
+});
+
+/* ---------- 某一天整天請假（全部課） ---------- */
+let dl={ds:"",kids:new Set(),by:"us",reason:""};
+function openDayLeave(ds){ const d=parseYmd(ds); dl={ds,kids:new Set(courses.filter(c=>occursOnDate(c,d)).map(c=>c.child)),by:"us",reason:""}; renderDayLeave(); }
+function dayLeaveTargets(){ const d=parseYmd(dl.ds); return courses.map((c,i)=>({c,i})).filter(o=>occursOnDate(o.c,d)&&dl.kids.has(o.c.child)); }
+function renderDayLeave(){
+  const d=parseYmd(dl.ds), all=[...new Set(courses.filter(c=>occursOnDate(c,d)).map(c=>c.child))], us=dl.by==="us";
+  const t=dayLeaveTargets();
+  const reasons=(us?US_REASONS:T_REASONS).map(r=>`<button type="button" class="${dl.reason===r?'on':''}" data-dlr="${esc(r)}">${r}</button>`).join("");
+  openModal(`<h2>${d.getMonth()+1}/${d.getDate()}（${WEEK_CH[isoOf(d)]}）整天請假</h2>
+    <div class="field"><label>誰？</label><div class="rchips">${all.map(k=>`<button type="button" class="${dl.kids.has(k)?'on':''}" data-dlkid="${k}">${k}</button>`).join("")}</div></div>
+    <div class="field"><label>誰取消？</label><div class="seg"><button class="${us?'on':''}" data-dlby="us">🙋 我們請假</button><button class="${us?'':'on'}" data-dlby="teacher">👩‍🏫 老師／全部停課</button></div></div>
+    <div class="field"><label>原因（選填）</label><div class="rchips" style="margin-bottom:6px" id="dlR">${reasons}</div><input id="dlReason" value="${esc(dl.reason)}" placeholder="例如：全家出遊、颱風假"></div>
+    <div class="field"><label>會標記這 ${t.length} 堂</label><div class="hint">${t.map(o=>`${kidInit(o.c)} ${displayTime(o.c)} ${o.c.title}`).join("<br>")||"（沒有選到課）"}</div></div>
+    <button class="btn leave-big" ${us?"":'style="background:#6E6D78"'} data-dlgo ${t.length?"":"disabled"}>${us?"🙋 全部標記請假":"🛑 全部標記停課"}</button>
+    <div class="modal-acts" style="margin-top:8px"><button class="btn btn-cancel" data-close>取消</button></div>`);
+  modal.querySelector("#dlReason").addEventListener("input",e=>{ dl.reason=e.target.value; });
+  modal.querySelector("#dlR").addEventListener("click",e=>{ const b=e.target.closest("[data-dlr]"); if(!b) return; dl.reason=dl.reason===b.dataset.dlr?"":b.dataset.dlr; renderDayLeave(); });
+}
+function applyDayLeave(){
+  const t=dayLeaveTargets(); if(!t.length) return; const reason=(dl.reason||"").trim();
+  t.forEach(o=>setLeave(o.c,dl.ds,true,dl.by,reason,true)); saveData(); renderAll();
+  if(dl.by!=="us"){ closeModal(); toast(`✅ 已標記 ${t.length} 堂停課`); return; }
+  // 我們請假：每位老師各自通知
+  openModal(`<h2>✅ 已標記 ${t.length} 堂請假</h2><p class="field hint">要通知老師的話，逐一按下面的按鈕（訊息已帶好日期和原因）：</p>
+    <div class="list">${t.map(o=>`<div class="row"><div class="info"><b>${kidTag(o.c)}${o.c.title}</b><small>${displayTime(o.c)} · ${teacherName(o.c)}</small></div><div class="acts"><button class="mini mini-leave" data-dlnotify="${o.i}" data-ch="line">LINE</button>${o.c.email?`<button class="mini mini-edit" data-dlnotify="${o.i}" data-ch="email">Email</button>`:""}</div></div>`).join("")}</div>
+    <div class="modal-acts"><button class="btn btn-save" data-close>完成</button></div>`);
+}
 
 /* ---------- Modal ---------- */
 const backdrop=document.getElementById("backdrop"), modal=document.getElementById("modal");
@@ -695,6 +781,7 @@ function openDayModal(s){
   const hasAny=courses.some(c=>occursOnDate(c,d));
   const list=hasAny?dayItemsHtml(d,s):`<p class="detail-meta">這天還沒有課。</p>`;
   openModal(`<h2>${d.getMonth()+1}/${d.getDate()}（${WEEK_CH[isoOf(d)]}）</h2><div style="margin:-2px -2px 0">${list}</div>
+    ${hasAny?`<button class="btn leave-big" style="margin-top:10px;background:var(--ink)" data-dayleave="${s}">🏖 這天整天請假</button>`:""}
     <div class="modal-acts"><button class="btn btn-cancel" data-close>關閉</button><button class="btn btn-save" data-addonce="${s}">＋ 新增單次課程</button></div>`);
 }
 
@@ -708,15 +795,15 @@ function openCourseDetail(i,ds){
       : (isMobile
           ? `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">按下會開 LINE 讓你選老師，訊息已帶好。</p>`
           : `<p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">電腦版：按下會喚起 LINE（訊息已複製）。想直接開這位老師的對話，請在「編輯課程」填他的 LINE 連結。</p>`);
-  const status=m.leave?`<div class="leave-status">✅ 已標記請假（${d.getMonth()+1}/${d.getDate()}）<button class="linkbtn" data-togglemark>取消標記</button></div>`:"";
+  const status=m.leave?`<div class="leave-status">✅ ${leaveTitle(m)}（${d.getMonth()+1}/${d.getDate()}）<span><button class="linkbtn" data-openleave="${i}" data-ds="${ds}">修改</button> <button class="linkbtn" data-togglemark>取消標記</button></span></div>`:"";
   const contacts=contactBtns(c);
   openModal(`
     <h2>${c.title}</h2>
     <p class="detail-meta">${c.child} · ${when} · ${displayTime(c)}</p>
     <p class="detail-meta">老師：${teacherName(c)}${c.goal?` · ${c.goal}`:""}</p>
     ${c.start?`<p class="detail-meta">🔔 ${remindText(c)}${Array.isArray(c.remind)?"":"（預設）"}</p>`:""}
-    <button class="btn leave-big" data-leave="${i}" data-ds="${ds}" data-channel="line">📩 用 LINE 請假</button>
-    ${lineHint}${emailBtn}${status}
+    ${m.leave?status:`<button class="btn leave-big" data-openleave="${i}" data-ds="${ds}">📅 請假／老師停課</button>
+    <p class="detail-meta" style="font-size:12px;margin:-2px 0 2px">可選一天或好幾天、標記是我們請假還是老師停課、加註原因，並用 LINE／Email 通知老師。</p>`}
     <div class="field" style="margin-top:10px"><label>這堂課的註記（會在課表顯示 📝）</label><textarea id="f_occnote" rows="2" placeholder="例如：改線上 / 老師說帶課本">${esc(m.note||"")}</textarea></div>
     <button class="btn btn-edit" data-savenote style="width:100%;justify-content:center;margin-bottom:2px">儲存註記</button>
     <div class="contact-label">聯絡老師討論</div>
