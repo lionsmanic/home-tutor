@@ -263,6 +263,8 @@
   .dt-paid{color:#2F6FD6;font-weight:800;}
   .dt-done{color:var(--ink);font-weight:700;} .dt-next{color:#A8A3B4;} .dt-off{color:var(--clash);}
   .fee-row.pg{display:block;}
+  .fee-row.sp .info small{display:block;color:var(--muted);font-size:12.5px;line-height:1.55;}
+  .sp-kid{display:flex;gap:6px;align-items:flex-start;font-size:13px;margin:4px 0 2px;line-height:1.5;} .sp-kid .kid{margin-top:2px;} .sp-kid span{font-weight:700;color:var(--ink);}
   .subj-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:10px 14px 8px;border-bottom:1px solid var(--hair);background:#fff;border-top:2px solid var(--hair);}
   .subj-h b{font-size:16px;font-weight:900;} .subj-h span{font-size:12.5px;color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums;} .subj-h em{font-style:normal;color:var(--clash);}
   .subj-h+.fee-row,.subj-h~.fee-row{padding-left:22px;}
@@ -874,7 +876,7 @@ function renderFees(){
       rs.sort((a,b)=>kOrd(a.c.child)-kOrd(b.c.child)||wOrd(a.c)-wOrd(b.c)||sortKey(a.c)-sortKey(b.c));
       const due=rs.reduce((t,r)=>t+r.due,0), paid=rs.reduce((t,r)=>t+r.paid,0), owe=rs.reduce((t,r)=>t+r.owe,0);
       const isPack=rs.every(r=>r.c.fee.mode==="pack");
-      return `<div class="subj-h"><b>${esc(title)}</b><span>${isPack?`本月上課 ${money(due)}${paid?` · 本月買套票 ${money(paid)}`:""}${owe>0.5?` · <em>未付 ${money(owe)}</em>`:""}`:`上課 ${money(due)} · 已付 ${money(paid)}${owe>0.5?` · <em>未付 ${money(owe)}</em>`:" · ✓ 已付清"}`}</span></div>`+rs.map(courseRow).join(""); }).join("");
+      return `<div class="subj-h"><b>${esc(title)}</b><span>${isPack?`本月上課 ${money(due)}${paid?` · 本月買套票 ${money(paid)}`:""}${owe>0.5?` · <em>未付 ${money(owe)}</em>`:""}`:`上課 ${money(due)} · 已付 ${money(paid)}${owe>0.5?` · <em>未付 ${money(owe)}</em>`:" · ✓ 已付清"}`}</span></div>`+renderRows(rs); }).join("");
   };
   const md2=x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;};
   const packLine=r=>{ const pk=r.pack, c=r.c;
@@ -882,6 +884,30 @@ function renderFees(){
     if(!pk.shared) return `套票 ${md2(pk.since)} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂${pk.used?`（${pk.usedDates.map(md2).join("、")}）`:""}${r.later.length?`<br><span class="dt-next">本月還有：${r.later.map(md2).join("、")}</span>`:""}`;
     if(!r.lead) return `${mine}<br><span class="dt-next">與上面共用同一張套票</span>`;
     return `共用套票：${pk.grp.filter(x=>!x.movedFrom).map(slotName).join("、")}<br>${md2(pk.since)} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂${pk.used?`（${pk.used2.map(u=>`${kidInit(u.c)} ${md2(u.d)}`).join("、")}）`:""}<br>${mine}`; };
+  // 共用套票：整張套票獨立一欄——剩幾堂、A／E 各在哪幾天上（扣堂），取代一個時段一行
+  const sharedBlock=g=>{ const r0=g[0], c=r0.c, pk=r0.pack, kOrd=k=>k==="Alyssa"?0:k==="Evelyn"?1:2;
+    const val=g.reduce((t,x)=>t+x.due,0), bought=g.reduce((t,x)=>t+x.paid,0);
+    const head=`<b>${esc(c.title)}${c.tname?" · "+esc(c.tname):""}<span class="pk" style="background:#EEF3FB;color:#2F4A75">共用套票</span>${pk?`<span class="pk ${pk.left<=2?"low":""}">剩 ${pk.left} 堂</span>`:`<span class="pk low">尚未記錄繳費</span>`}</b>`;
+    let body=`<small>時段：${g.filter(x=>!x.c.movedFrom).map(x=>`${slotName(x.c)} ${x.c.start||""}${x.c.end?"–"+x.c.end:""}`).join("、")}</small>`;
+    if(pk){
+      body+=`<small>${md2(pk.since)} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂，每堂 ${money(pk.unit)}</small>`;
+      const byK={}; pk.used2.forEach(u=>{ (byK[u.c.child]=byK[u.c.child]||[]).push(u); });
+      Object.keys(byK).sort((a,b)=>kOrd(a)-kOrd(b)).forEach(k=>{ const us=byK[k];
+        body+=`<div class="sp-kid">${kidTag(us[0].c)}<span>${us.length} 堂：${us.map(u=>`${md2(u.d)}${u.c.movedFrom?"(調)":""}`).join("、")}</span></div>`; });
+    }
+    const later=[]; g.forEach(x=>x.later.forEach(d=>later.push({d,c:x.c}))); later.sort((a,b)=>a.d<b.d?-1:1);
+    if(later.length) body+=`<small class="dt-next">本月還有：${later.map(u=>`${kidInit(u.c)} ${md2(u.d)}`).join("、")}${pk&&later.length>pk.left?`（套票只剩 ${Math.max(0,pk.left)} 堂，記得續費）`:""}</small>`;
+    const lv=[]; g.forEach(x=>x.leaves.forEach(l=>lv.push({...l,c:x.c}))); lv.sort((a,b)=>a.ds<b.ds?-1:1);
+    if(lv.length) body+=`<small class="dt-off">不扣堂：${lv.map(l=>`${kidInit(l.c)} ${md2(l.ds)} ${leaveTag(l.m)}`).join("、")}</small>`;
+    const owe=g.reduce((t,x)=>t+x.owe,0);
+    return `<div class="fee-row sp"><div class="info">${head}${body}</div><div class="amt">本月上課 ${money(val)}${bought?`<br>買套票 ${money(bought)}`:""}${owe>0.5?`<br><span class="owe">未付 ${money(owe)}</span>`:""}</div><button class="fee-btn" data-pay="${r0.i}">付款</button></div>`; };
+  const renderRows=rs=>{ const done=new Set(); let out="";
+    rs.forEach(r=>{ if(r.c.fee.mode==="pack"&&r.pack&&r.pack.shared){ const k=packKey(r.c); if(done.has(k)) return; done.add(k);
+        out+=sharedBlock(rs.filter(x=>x.c.fee.mode==="pack"&&packKey(x.c)===k)); }
+      else if(r.c.fee.mode==="pack"&&!r.pack&&packGroup(r.c).length>1){ const k=packKey(r.c); if(done.has(k)) return; done.add(k);
+        out+=sharedBlock(rs.filter(x=>x.c.fee.mode==="pack"&&packKey(x.c)===k)); }
+      else out+=courseRow(r); });
+    return out; };
   const courseRow=r=>{ const c=r.c, f=c.fee, pk=r.pack;
     const pkTxt=f.mode==="pack"?(pk?`<span class="pk ${pk.left<=2?"low":""}">剩 ${pk.left} 堂</span>`:`<span class="pk low">尚未記錄繳費</span>`):"";
     const left=r.owe;
