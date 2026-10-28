@@ -1141,7 +1141,7 @@ async function cloudRead(){
   try{ return JSON.parse(r.text); }catch(e){ return null; }
 }
 async function cloudWrite(){
-  const body=JSON.stringify({courses,marks,settings,updatedAt,calId:gcal.calendarId||""});
+  const body=JSON.stringify({courses,marks,settings,updatedAt,calId:gcal.calendarId||"",deadCals:gcal.deadCals||[]});
   const id=await cloudFind();
   if(id){ const r=await gapi(`${DRIVE_UP}/files/${id}?uploadType=media`,{method:"PATCH",body,ok:[404]}); if(r._s!==404){ gcal.cloudAt=updatedAt; gcal.cloudCal=gcal.calendarId||""; saveG(); return; } gcal.fileId=""; }
   const b="htb"+Math.random().toString(36).slice(2);
@@ -1173,10 +1173,13 @@ async function retireCalendar(id){
 // 所有裝置共用雲端記錄的那一個日曆
 async function adoptCloudCalendar(d){
   gcal.cloudCal=(d&&d.calId)||"";
+  if(d&&Array.isArray(d.deadCals)) gcal.deadCals=[...new Set([...(gcal.deadCals||[]),...d.deadCals])];
+  if(gcal.calendarId&&(gcal.deadCals||[]).includes(gcal.calendarId)&&gcal.cloudCal!==gcal.calendarId){ gcal.calendarId=""; gcal.sig=""; gcal.last=0; }
   if(!gcal.cloudCal||gcal.cloudCal===gcal.calendarId) return;
+  if((gcal.deadCals||[]).includes(gcal.cloudCal)) return;            // 使用者按過「重建日曆」放棄的舊日曆
   const r=await gapi("/calendars/"+encodeURIComponent(gcal.cloudCal),{ok:[400,403,404,410]}); if(r._s!==200) return;   // 雲端那個被刪了 → 用這台的
   const old=gcal.calendarId; gcal.calendarId=gcal.cloudCal; gcal.last=0; gcal.sig=""; saveG();
-  if(old){ await retireCalendar(old); toast("🧹 已清掉這台裝置多建的重複日曆"); }
+  if(old&&!(gcal.deadCals||[]).includes(old)){ await retireCalendar(old); toast("🧹 已清掉這台裝置多建的重複日曆"); }
 }
 async function pullCloud(){
   const d=await cloudRead();
@@ -1215,6 +1218,15 @@ async function gSyncNow(force){
 }
 // 切回這個分頁時，自動抓別台裝置的最新版
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&gcal&&gcal.clientId&&tokOk()&&!gState.busy) gSyncNow(); });
+async function rebuildCalendar(){
+  if(!tokOk()){ askToken(rebuildCalendar); return; }
+  const old=gcal.calendarId; if(old) gcal.deadCals=[...new Set([...(gcal.deadCals||[]),old])].slice(-20);
+  gcal.calendarId=""; gcal.sig=""; gcal.last=0; saveG();
+  if(old) try{ await retireCalendar(old); }catch(e){}
+  await gSyncNow(true); await cloudWrite().catch(()=>{});
+  if(!gState.err) toast("✅ 已建立新的課表日曆，請重新整理 Google 日曆");
+  if(modal.querySelector("#gStat")) openSync();
+}
 function gStatHTML(){
   if(!gcal||!gcal.clientId) return `<div id="gStat" class="sync-stat">尚未設定</div>`;
   if(gState.busy) return `<div id="gStat" class="sync-stat">🔄 同步中…</div>`;
@@ -1267,7 +1279,10 @@ function openSync(){
     <div class="field"><label>🔔 預設上課提醒（沒有個別設定的課都用這個）</label><div class="rchips" id="defRemind"></div>
       <div class="hint">個別課程可在「編輯課程」另外設定。提醒會跟著課程寫進 Google 日曆，手機 Google 日曆 App 會準時跳通知。</div></div>
     <div class="field"><label>手機／其他電腦</label><div class="hint">打開同一個網址，點上方藍色的「登入 Google」，登入同一個帳號就會載入同一份課表。之後在任何一台修改，另一台切回這頁時會自動更新。</div></div>
+    <div class="field"><label>日曆不見了或重複？</label><div class="hint">在 Google 日曆刪掉了課表日曆、或出現重複時，按這裡會建立一個全新的「${GCAL_NAME}」並寫入所有課程，所有裝置都會改用新的。<br>目前日曆 ID：<code style="word-break:break-all">${gcal.calendarId||"（尚未建立）"}</code></div>
+      <button class="btn btn-cancel" id="gRebuild" style="width:100%;justify-content:center;padding:11px;margin-top:6px">🔄 重建日曆</button></div>
     <div class="modal-acts"><button class="btn btn-del" id="gOff">停用</button><button class="btn btn-cancel" id="gNow">立即同步</button><button class="btn btn-save" data-close>完成</button></div>`);
+  modal.querySelector("#gRebuild").addEventListener("click",e=>{ e.target.disabled=true; e.target.textContent="重建中…"; rebuildCalendar(); });
   modal.querySelector("#gNow").addEventListener("click",()=>{ tokOk()?gSyncNow(true):askToken(()=>gSyncNow(true)); });
   bindRemind(modal.querySelector("#defRemind"),()=>settings.remind||[],v=>{ settings.remind=v||[]; settings.remindSet=true; saveData(); renderAll(); },false);
   modal.querySelector("#gOff").addEventListener("click",()=>{ openModal(`<h2>停用 Google 同步？</h2><p class="field hint">這台裝置之後存檔不會再更新 Google 日曆。Google 上的「${GCAL_NAME}」不會被刪除，不要的話可到 Google 日曆設定裡自行刪除該日曆。</p>
