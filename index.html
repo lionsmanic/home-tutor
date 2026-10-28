@@ -1109,7 +1109,7 @@ function desiredEvents(){
   return out;
 }
 async function ensureCalendar(){
-  if(gcal.calendarId){ const r=await gapi("/calendars/"+encodeURIComponent(gcal.calendarId),{ok:[404,403]}); if(r._s===200) return; }
+  if(gcal.calendarId){ const r=await gapi("/calendars/"+encodeURIComponent(gcal.calendarId),{ok:[400,403,404,410]}); if(r._s===200) return; gcal.calendarId=""; gcal.sig=""; saveG(); }
   const cal=await gapi("/calendars",{method:"POST",body:JSON.stringify({summary:GCAL_NAME,timeZone:"Asia/Taipei",description:"由 lionsmanic.github.io/home-tutor 自動同步。請在課表頁修改，這裡的手動修改會被覆蓋。"})});
   gcal.calendarId=cal.id; saveG();
 }
@@ -1174,7 +1174,7 @@ async function retireCalendar(id){
 async function adoptCloudCalendar(d){
   gcal.cloudCal=(d&&d.calId)||"";
   if(!gcal.cloudCal||gcal.cloudCal===gcal.calendarId) return;
-  const r=await gapi("/calendars/"+encodeURIComponent(gcal.cloudCal),{ok:[403,404]}); if(r._s!==200) return;   // 雲端那個被刪了 → 用這台的
+  const r=await gapi("/calendars/"+encodeURIComponent(gcal.cloudCal),{ok:[400,403,404,410]}); if(r._s!==200) return;   // 雲端那個被刪了 → 用這台的
   const old=gcal.calendarId; gcal.calendarId=gcal.cloudCal; gcal.last=0; gcal.sig=""; saveG();
   if(old){ await retireCalendar(old); toast("🧹 已清掉這台裝置多建的重複日曆"); }
 }
@@ -1206,7 +1206,7 @@ async function gSyncNow(force){
     // Google 上的內容與目前應有的不一致（改了課、改了提醒、或網頁更新了寫法）就重寫；force=按「立即同步」
     const sig=hashStr(JSON.stringify(desiredEvents()));
     // 日曆在 Google 上被手動刪掉了 → 視為需要重建
-    let gone=false; if(gcal.calendarId&&!force&&!calDirty&&gcal.sig===sig){ const r=await gapi("/calendars/"+encodeURIComponent(gcal.calendarId),{ok:[403,404]}); gone=r._s!==200; }
+    let gone=false; if(gcal.calendarId&&!force&&!calDirty&&gcal.sig===sig){ const r=await gapi("/calendars/"+encodeURIComponent(gcal.calendarId),{ok:[400,403,404,410]}); gone=r._s!==200; }
     if(force||calDirty||gone||!gcal.last||!gcal.calendarId||gcal.sig!==sig){ gState.res=await reconcile(); gcal.last=Date.now(); gcal.sig=sig; calDirty=false; }
     if((gcal.calendarId||"")!==(gcal.cloudCal||"")) await cloudWrite();   // 把共用日曆記到雲端，讓其他裝置跟著用
     gcal.seen=Date.now(); saveG(); gState.pending=false;
