@@ -774,13 +774,15 @@ function monthStats(y,m){
   const first=ymd(new Date(y,m,1)), last=ymd(new Date(y,m+1,0)), today=ymd(now);
   const rows=courses.map((c,i)=>{ const f=c.fee||{}; if(!f.mode) return null;
     const all=lessonDates(c,first,last), held=all.filter(x=>x<=today).length;
-    const due=f.mode==="month"?(all.length?(+f.amt||0):0):all.length*unitCost(c);
+    // 套票：只有起扣日之後的課才算進套票；之前的課列為「不在套票內」
+    const pk0=f.mode==="pack"?packInfo(c):null, inPack=pk0?all.filter(x=>x>=pk0.since):all, outPack=pk0?all.filter(x=>x<pk0.since):[];
+    const due=f.mode==="month"?(all.length?(+f.amt||0):0):(f.mode==="pack"?inPack.length:all.length)*unitCost(c);
     const mp=pays().filter(p=>p.cid===c.cid&&p.date>=first&&p.date<=last), paid=mp.reduce((t,p)=>t+(+p.amount||0),0);
     const pack=f.mode==="pack"?packInfo(c):null;
     // 未付：套票看剩餘堂數（用完了才欠），其他看本月上課費用−本月已付
     const owe=f.mode==="pack"?(pack?Math.max(0,-pack.left)*pack.unit:due):Math.max(0,due-paid);
     const leaves=[]; { let d=parseYmd(first), e=parseYmd(last); while(d<=e){ const ds=ymd(d); if(!c.paused&&occursOnDate(c,d)){ const mk=getMark(c,ds); if(mk&&mk.leave) leaves.push({ds,m:mk}); } d=addDays(d,1); } }
-    return {c,i,n:all.length,held,due,paid,pack,owe,dates:all,leaves};
+    return {c,i,n:all.length,held,due,paid,pack,owe,dates:all,leaves,outPack};
   }).filter(Boolean);
   const mpays=pays().filter(p=>p.date>=first&&p.date<=last).sort((a,b)=>a.date<b.date?-1:1);
   const byMeth={}; mpays.forEach(p=>byMeth[p.method]=(byMeth[p.method]||0)+(+p.amount||0));
@@ -804,6 +806,7 @@ function renderFees(){
     const left=r.owe;
     return `<div class="fee-row"><div class="info"><b>${kidTag(c)}${c.title}${pkTxt}</b><small>${feeLabel(c)} · ${methName(f.method)}<br>本月 ${r.n} 堂${r.n?`（已上 ${r.held}）`:""}${r.n?`：${r.dates.map(x=>{const dd=parseYmd(x);return `<span class="${x<=ymd(now)?"dt-done":"dt-next"}">${dd.getMonth()+1}/${dd.getDate()}</span>`;}).join("、")}`:""}
         ${r.leaves.length?`<br><span class="dt-off">不計費：${r.leaves.map(l=>{const dd=parseYmd(l.ds);return `${dd.getMonth()+1}/${dd.getDate()} ${leaveTag(l.m)}`;}).join("、")}</span>`:""}
+        ${r.outPack.length?`<br><span class="dt-next">不在套票內：${r.outPack.map(x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;}).join("、")}（起扣日之前，沒有扣堂也沒算錢）</span>`:""}
         ${pk?`<br>套票 ${(d=>`${d.getMonth()+1}/${d.getDate()}`)(parseYmd(pk.since))} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂${pk.used?`（${pk.usedDates.map(x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;}).join("、")}）`:""}`:""}</small></div>
       <div class="amt">上課 ${money(r.due)}<br>已付 ${money(r.paid)}${f.mode==="pack"&&pk&&pk.left>=0?"":`<br><span class="${left>0.5?"owe":"ok"}">${left>0.5?"未付 "+money(left):"✓ 已付清"}</span>`}</div>
       <button class="fee-btn" data-pay="${r.i}">付款</button></div>`; }).join("")
