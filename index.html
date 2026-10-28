@@ -173,6 +173,8 @@
   .agz-tag.clash{color:var(--clash);} .agz-tag.leave{background:var(--clash-soft);color:var(--clash);} .agz-tag.note{background:var(--sun-soft);color:#9A6611;}
 
   .list{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+  .sec-fold>summary{cursor:pointer;list-style:none;} .sec-fold>summary::-webkit-details-marker{display:none;}
+  .sec-fold>summary h2::before{content:"▸ ";font-size:14px;} .sec-fold[open]>summary h2::before{content:"▾ ";}
   .kid-grp>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;}
   .kid-grp>summary::-webkit-details-marker{display:none;}
   .kid-grp>summary::before{content:"▸";font-size:12px;} .kid-grp[open]>summary::before{content:"▾";}
@@ -378,8 +380,10 @@
     <div class="section-head"><h2>💰 費用</h2><span class="count">每月上課費用與付款統計</span></div>
     <div id="fees"></div>
 
-    <div class="section-head"><h2>📇 老師聯絡中心</h2></div>
-    <div class="tgrid" id="teachers"></div>
+    <details class="sec-fold" data-fold="teachers">
+      <summary class="section-head"><h2>📇 老師聯絡中心</h2><span class="count" id="teacherCount"></span></summary>
+      <div class="tgrid" id="teachers"></div>
+    </details>
 
     <details class="howto">
       <summary>✏️ 使用說明（請假怎麼運作、標記、臨時加課、LINE）</summary>
@@ -674,8 +678,10 @@ function renderCalendar(){ document.getElementById("calendar").innerHTML=navHTML
 function schedLabel(c){ if(c.paused) return ["暫緩","st-pause"]; if(c.recur==="once"){ const ds=onceDates(c); if(!ds.length) return ["單次","st-once"]; const n=parseYmd(nextOnce(c)), md=`${n.getMonth()+1}/${n.getDate()}`; if(ds.length===1) return [`單次 ${md}`,"st-once"]; const left=ds.filter(x=>x>=ymd(now)).length; return [left?`指定 ${ds.length} 天 · 下次 ${md}`:`指定 ${ds.length} 天（已結束）`,"st-once"]; } return [`每週 ${c.day||""}`,"st-fixed"]; }
 // 課程清單各孩子預設收起；展開狀態記在這台瀏覽器
 let listOpen=(()=>{ try{ return new Set(JSON.parse(localStorage.getItem("home-tutor-listopen")||"[]")); }catch(e){ return new Set(); } })();
-document.addEventListener("toggle",e=>{ const d=e.target; if(!(d&&d.dataset&&d.dataset.kidgrp)) return; d.open?listOpen.add(d.dataset.kidgrp):listOpen.delete(d.dataset.kidgrp);
+document.addEventListener("toggle",e=>{ const d=e.target; if(d&&d.dataset&&d.dataset.fold){ const k="fold:"+d.dataset.fold; d.open?listOpen.add(k):listOpen.delete(k); try{ localStorage.setItem("home-tutor-listopen",JSON.stringify([...listOpen])); }catch(err){} return; }
+  if(!(d&&d.dataset&&d.dataset.kidgrp)) return; d.open?listOpen.add(d.dataset.kidgrp):listOpen.delete(d.dataset.kidgrp);
   try{ localStorage.setItem("home-tutor-listopen",JSON.stringify([...listOpen])); }catch(err){} },true);
+function applyFolds(){ document.querySelectorAll("details[data-fold]").forEach(d=>{ d.open=listOpen.has("fold:"+d.dataset.fold); }); }
 function renderCourseList(){
   const box=document.getElementById("courseList");
   const kids=[...new Set(courses.map(c=>c.child))]; ["Alyssa","Evelyn"].forEach(n=>{if(!kids.includes(n))kids.push(n);});
@@ -705,6 +711,7 @@ function renderTeachers(){
   const map={};
   courses.forEach((c,i)=>{ const n=(c.tname||"").trim(); if(!n) return; if(!map[n]) map[n]={name:n,line:"",email:"",fb:"",courses:[]}; const g=map[n]; if(c.line&&!g.line)g.line=c.line; if(c.email&&!g.email)g.email=c.email; if(c.fb&&!g.fb)g.fb=c.fb; g.courses.push({title:c.title,i}); });
   const names=Object.keys(map);
+  const tc=document.getElementById("teacherCount"); if(tc) tc.textContent=names.length?`${names.length} 位老師 · 點開查看`:"點開查看";
   if(!names.length){ box.innerHTML=`<div class="empty-teachers">老師資料直接寫在「課程」裡：編輯任一堂課，填上老師名字與 LINE／Email／FB 即可，這裡就會自動依老師整理出來。請假本身不需要先設定老師。</div>`; return; }
   box.innerHTML=names.map(n=>{ const g=map[n], c=contactBtns(g)||`<span class="btn off">未填聯絡方式</span>`;
     const cs=g.courses.map(x=>x.title).join("、");
@@ -1710,6 +1717,7 @@ try{ localStorage.removeItem("home-tutor-sync-v1"); }catch(e){}
 /* init */
 document.getElementById("todayLine").textContent=`📅 今天 ${now.getMonth()+1}/${now.getDate()} ${["週日","週一","週二","週三","週四","週五","週六"][now.getDay()]}`;
 initData();
+applyFolds();
 renderAll();
 paintG(); if(gcal&&gcal.clientId) initTokenClient().then(()=>{ if(tokOk()) gSyncNow(); }).catch(e=>{ gState.err=e.message; paintG(); });
 const _shared=readSharedFromHash();
