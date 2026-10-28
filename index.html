@@ -173,6 +173,11 @@
   .agz-tag.clash{color:var(--clash);} .agz-tag.leave{background:var(--clash-soft);color:var(--clash);} .agz-tag.note{background:var(--sun-soft);color:#9A6611;}
 
   .list{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+  .kid-grp>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;}
+  .kid-grp>summary::-webkit-details-marker{display:none;}
+  .kid-grp>summary::before{content:"▸";font-size:12px;} .kid-grp[open]>summary::before{content:"▾";}
+  .kid-grp .kg-n{margin-left:auto;font-weight:700;font-size:12px;opacity:.75;letter-spacing:0;}
+  .kid-grp+.kid-grp>summary{border-top:1px solid var(--hair);}
   .list-sub{padding:9px 14px;font-weight:900;font-size:13px;letter-spacing:.5px;}
   .list-sub.alyssa{color:var(--alyssa);background:var(--alyssa-soft);}
   .list-sub.sister{color:var(--sister);background:var(--sister-soft);}
@@ -667,6 +672,10 @@ function renderCalendar(){ document.getElementById("calendar").innerHTML=navHTML
 
 /* ---------- 課程清單 ---------- */
 function schedLabel(c){ if(c.paused) return ["暫緩","st-pause"]; if(c.recur==="once"){ const ds=onceDates(c); if(!ds.length) return ["單次","st-once"]; const n=parseYmd(nextOnce(c)), md=`${n.getMonth()+1}/${n.getDate()}`; if(ds.length===1) return [`單次 ${md}`,"st-once"]; const left=ds.filter(x=>x>=ymd(now)).length; return [left?`指定 ${ds.length} 天 · 下次 ${md}`:`指定 ${ds.length} 天（已結束）`,"st-once"]; } return [`每週 ${c.day||""}`,"st-fixed"]; }
+// 課程清單各孩子預設收起；展開狀態記在這台瀏覽器
+let listOpen=(()=>{ try{ return new Set(JSON.parse(localStorage.getItem("home-tutor-listopen")||"[]")); }catch(e){ return new Set(); } })();
+document.addEventListener("toggle",e=>{ const d=e.target; if(!(d&&d.dataset&&d.dataset.kidgrp)) return; d.open?listOpen.add(d.dataset.kidgrp):listOpen.delete(d.dataset.kidgrp);
+  try{ localStorage.setItem("home-tutor-listopen",JSON.stringify([...listOpen])); }catch(err){} },true);
 function renderCourseList(){
   const box=document.getElementById("courseList");
   const kids=[...new Set(courses.map(c=>c.child))]; ["Alyssa","Evelyn"].forEach(n=>{if(!kids.includes(n))kids.push(n);});
@@ -680,7 +689,8 @@ function renderCourseList(){
         const leave=c.paused?`<button class="mini mini-leave" disabled>暫緩</button>`:`<button class="mini mini-leave" data-openleave="${o.i}" data-ds="${nextDateFor(c)}">請假</button>`;
         return `<div class="row ${cls}"><span class="pill-status ${st[1]}">${st[0]}</span><div class="info"><b>${c.title}${c.fee&&c.fee.mode==="pack"?(()=>{const pi=packInfo(c);return pi?`<span class="pk ${pi.left<=2?"low":""}">剩 ${pi.left} 堂</span>`:"";})():""}</b><small>${displayTime(c)} · ${teacherName(c)}${c.fee&&c.fee.mode?" · "+feeLabel(c):""}</small></div><div class="acts">${leave}<button class="mini mini-edit" data-edit="${o.i}">編輯</button></div></div>`;
       }).join("");
-    return `<div class="list-sub ${cls}">${kid}</div>${rows}`;
+    const n=courses.filter(c=>c.child===kid&&!c.movedFrom).length, open=listOpen.has(kid);
+    return `<details class="kid-grp" data-kidgrp="${kid}" ${open?"open":""}><summary class="list-sub ${cls}">${kid}<span class="kg-n">${n} 門課</span></summary>${rows}</details>`;
   }).join("")+`</div>`;
 }
 
