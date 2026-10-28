@@ -344,11 +344,11 @@
     <div class="section-head"><h2>🗓️ 課表</h2><span class="count">點空白處可直接加課 · 點課程看詳情／請假</span></div>
     <div id="calendar"></div>
 
-    <div class="section-head"><h2>💰 費用</h2><span class="count">每月上課費用與付款統計</span></div>
-    <div id="fees"></div>
-
     <div class="section-head"><h2>📚 課程清單</h2><span class="count">編輯／刪除／請假</span></div>
     <div id="courseList"></div>
+
+    <div class="section-head"><h2>💰 費用</h2><span class="count">每月上課費用與付款統計</span></div>
+    <div id="fees"></div>
 
     <div class="section-head"><h2>📇 老師聯絡中心</h2></div>
     <div class="tgrid" id="teachers"></div>
@@ -721,7 +721,7 @@ function fallbackCopy(text){ return new Promise(res=>{const ta=document.createEl
 /* =====================================================================
    費用：每門課的收費方式 + 付款紀錄（settings.pays，跟課表一起同步）
    ===================================================================== */
-const FEE_MODES=[["","不記錄費用"],["per","每堂固定金額"],["hour","每小時金額"],["pack","套票（預繳堂數）"],["month","月費"]];
+const FEE_MODES=[["","不記錄費用"],["hour","每小時金額（自動算每堂）"],["per","每堂固定金額"],["pack","套票（預繳堂數）"],["month","月費"]];
 const PAY_METHODS=[["card","💳 刷卡"],["transfer","🏦 轉帳"],["cash","💵 現金"],["other","其他"]];
 const methName=k=>(PAY_METHODS.find(x=>x[0]===k)||["","其他"])[1];
 const money=n=>"$"+Math.round(n||0).toLocaleString("en-US");
@@ -735,7 +735,16 @@ function bindFeeFields(){
     a.placeholder={per:"每堂多少錢",hour:"每小時多少錢",pack:"套票總金額",month:"每月多少錢"}[m]||"金額";
     modal.querySelector("#feeHint").textContent={per:"每上一堂算一次；請假、停課不算。",hour:"依每堂上課時數計算；請假、停課不算。",
       pack:"例：10 堂 $8,000。繳費時在「費用」記一筆，之後每上一堂自動扣一堂；請假、停課不扣。",month:"每個月固定金額（那個月有課才算）。"}[m]||""; };
-  mo.addEventListener("change",upd); upd();
+  const calc=()=>{ if(mo.value!=="hour"){ upd(); return; } upd();
+    const s0=normalizeTime(modal.querySelector("#f_start").value), e0=normalizeTime(modal.querySelector("#f_end").value), a=+modal.querySelector("#f_feeamt").value||0;
+    const h=modal.querySelector("#feeHint");
+    if(timeMode!=="fixed"||!s0||!e0||toMin(e0)<=toMin(s0)){ h.textContent="請先填上課開始與結束時間，系統會自動算每堂費用。"; return; }
+    const hrs=(toMin(e0)-toMin(s0))/60, ht=Number.isInteger(hrs)?hrs:hrs.toFixed(2).replace(/0+$/,"");
+    h.innerHTML=a?`🧮 ${money(a)} × ${ht} 小時 = <b>每堂 ${money(a*hrs)}</b>；請假、停課不算。`:`上課 ${ht} 小時，填每小時金額後自動算每堂費用。`; };
+  mo.addEventListener("change",calc);
+  ["#f_feeamt","#f_start","#f_end"].forEach(id=>{ const el=modal.querySelector(id); if(el){ el.addEventListener("input",calc); el.addEventListener("change",calc); } });
+  modal.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",calc));
+  calc();
 }
 function lessonDates(c,from,to){ // from/to: ymd（含），排除請假／停課、暫緩
   if(c.paused) return []; const out=[]; let d=parseYmd(from), end=parseYmd(to);
@@ -773,30 +782,36 @@ function monthStats(y,m){
   return {rows,mpays,byMeth,byKid,due,paid,owe,first,last};
 }
 function feeLabel(c){ const f=c.fee||{};
-  return {per:`每堂 ${money(f.amt)}`,hour:`每小時 ${money(f.amt)}`,pack:`套票 ${f.packN||10} 堂 ${money(f.amt)}`,month:`月費 ${money(f.amt)}`}[f.mode]||""; }
+  const hrs=durH(c), hrTxt=Number.isInteger(hrs)?hrs:hrs.toFixed(2).replace(/0+$/,"");
+  return {per:`每堂 ${money(f.amt)}`,hour:c.start&&c.end?`每小時 ${money(f.amt)} × ${hrTxt} 小時 = 每堂 ${money(f.amt*hrs)}`:`每小時 ${money(f.amt)}`,pack:`套票 ${f.packN||10} 堂 ${money(f.amt)}`,month:`月費 ${money(f.amt)}`}[f.mode]||""; }
 function renderFees(){
   const box=document.getElementById("fees"); if(!box) return;
   const y=feeCursor.getFullYear(), m=feeCursor.getMonth(), st=monthStats(y,m);
-  const noFee=courses.filter(c=>!(c.fee&&c.fee.mode)&&!c.paused).length;
-  const owe=st.owe;
+  const noFee=courses.filter(c=>!(c.fee&&c.fee.mode)&&!c.paused).length, owe=st.owe;
   let h=`<div class="fee-card"><div class="fee-top"><button class="navbtn" data-feenav="-1">‹</button><span class="navlabel">${y}年${m+1}月</span><button class="navbtn" data-feenav="1">›</button>
-    <span class="sp"></span><button class="fee-btn pri" data-pay="">＋ 記一筆付款</button><button class="fee-btn" data-feecsv>⬇ CSV</button></div>
-    <div class="fee-sum"><div><small>本月上課費用</small><b>${money(st.due)}</b></div><div><small>本月已付</small><b>${money(st.paid)}</b></div><div class="${owe>0.5?"owe":""}"><small>未付</small><b>${money(owe)}</b></div></div>`;
-  const meth=PAY_METHODS.filter(([k])=>st.byMeth[k]).map(([k,t])=>`<span>${t} <b>${money(st.byMeth[k])}</b></span>`).join("");
-  const kids=Object.entries(st.byKid).map(([k,v])=>`<span>${k} 上課 <b>${money(v.due)}</b>／付 <b>${money(v.paid)}</b></span>`).join("");
-  if(meth||kids) h+=`<div class="fee-meth">${meth}${kids}</div>`;
+    <span class="sp"></span><button class="fee-btn pri" data-pay="">＋ 記一筆付款</button></div>`;
+  // ① 各課程
   h+=`<div class="fee-h">各課程</div>`;
   h+=st.rows.length?st.rows.map(r=>{ const c=r.c, f=c.fee, pk=r.pack;
     const pkTxt=f.mode==="pack"?(pk?`<span class="pk ${pk.left<=2?"low":""}">剩 ${pk.left} 堂${pk.left>0?` · ${money(pk.left*pk.unit)}`:""}</span>`:`<span class="pk low">尚未記錄繳費</span>`):"";
     const left=r.owe;
-    return `<div class="fee-row"><div class="info"><b>${kidTag(c)}${c.title}${pkTxt}</b><small>${feeLabel(c)} · ${methName(f.method)} · 本月 ${r.n} 堂${r.n?`（已上 ${r.held}）`:""}</small></div>
+    return `<div class="fee-row"><div class="info"><b>${kidTag(c)}${c.title}${pkTxt}</b><small>${feeLabel(c)} · ${methName(f.method)}<br>本月 ${r.n} 堂${r.n?`（已上 ${r.held}）`:""}</small></div>
       <div class="amt">上課 ${money(r.due)}<br>已付 ${money(r.paid)}${f.mode==="pack"&&pk&&pk.left>=0?"":`<br><span class="${left>0.5?"owe":"ok"}">${left>0.5?"未付 "+money(left):"✓ 已付清"}</span>`}</div>
       <button class="fee-btn" data-pay="${r.i}">付款</button></div>`; }).join("")
-    :`<div class="fee-empty">還沒有課程設定收費方式。到「課程清單 › 編輯」最下面的「💰 收費方式」設定。</div>`;
+    :`<div class="fee-empty">還沒有課程設定收費方式。到上面「課程清單 › 編輯」的「💰 收費方式」設定。</div>`;
   if(noFee&&st.rows.length) h+=`<div class="fee-empty">另有 ${noFee} 門課還沒設定收費方式（編輯課程即可設定）。</div>`;
+  // ② 本月付款紀錄
   h+=`<div class="fee-h">本月付款紀錄</div>`+(st.mpays.length?st.mpays.map(p=>{ const c=courses.find(x=>x.cid===p.cid); const d=parseYmd(p.date);
     return `<div class="fee-row"><div class="info"><b>${d.getMonth()+1}/${d.getDate()} ${c?kidTag(c)+c.title:"（已刪除的課）"}</b><small>${methName(p.method)}${p.classes?` · 套票 ${p.classes} 堂`:""}${p.note?" · "+p.note:""}</small></div>
       <div class="amt"><b>${money(p.amount)}</b></div><button class="pay-x" data-paydel="${p.id}" title="刪除這筆">✕</button></div>`; }).join(""):`<div class="fee-empty">這個月還沒有付款紀錄。</div>`);
+  // ③ CSV 下載
+  h+=`<div class="fee-h">CSV 下載</div><div class="fee-row"><div class="info"><small>${y} 年 ${m+1} 月的各課程費用與付款明細，可用 Excel 開啟</small></div><button class="fee-btn" data-feecsv>⬇ 下載 CSV</button></div>`;
+  // ④ 本月上課費用
+  h+=`<div class="fee-h">本月上課費用</div>
+    <div class="fee-sum"><div><small>本月上課費用</small><b>${money(st.due)}</b></div><div><small>本月已付</small><b>${money(st.paid)}</b></div><div class="${owe>0.5?"owe":""}"><small>未付</small><b>${money(owe)}</b></div></div>`;
+  const meth=PAY_METHODS.filter(([k])=>st.byMeth[k]).map(([k,t])=>`<span>${t} <b>${money(st.byMeth[k])}</b></span>`).join("");
+  const kids=Object.entries(st.byKid).map(([k,v])=>`<span>${k} 上課 <b>${money(v.due)}</b>／付 <b>${money(v.paid)}</b></span>`).join("");
+  if(meth||kids) h+=`<div class="fee-meth" style="border-bottom:none">${meth}${kids}</div>`;
   box.innerHTML=h+`</div>`;
 }
 function openPay(i){
@@ -1013,7 +1028,7 @@ function initWheel(){
 }
 function markWheel(col){ const i=Math.round(col.scrollTop/WH); [...col.children].forEach((x,k)=>x.classList.toggle("on",k===i)); }
 function curVal(t){ return normalizeTime(wEl("#f_"+t).value); }
-function updWheelTabs(){ ["start","end"].forEach(t=>{ wEl("#wt_"+t).textContent=" "+(curVal(t)||"--:--"); wEl(`[data-wtab="${t}"]`).classList.toggle("on",wheelT===t); }); modal.querySelectorAll("[data-wheel]").forEach(b=>b.classList.toggle("on",wEl("#wheelBox").style.display!=="none"&&b.dataset.wheel===wheelT)); }
+function updWheelTabs(){ setTimeout(()=>{ const fm=modal.querySelector("#f_feemode"); if(fm) fm.dispatchEvent(new Event("change")); },0); ["start","end"].forEach(t=>{ wEl("#wt_"+t).textContent=" "+(curVal(t)||"--:--"); wEl(`[data-wtab="${t}"]`).classList.toggle("on",wheelT===t); }); modal.querySelectorAll("[data-wheel]").forEach(b=>b.classList.toggle("on",wEl("#wheelBox").style.display!=="none"&&b.dataset.wheel===wheelT)); }
 function syncWheel(v,smooth){ const [h,m]=v.split(":").map(Number); wheelMute=Date.now()+(smooth?450:150);
   const hc=wEl("#wcol_h"), mc=wEl("#wcol_m"), beh=smooth?"smooth":"auto";
   hc.scrollTo({top:h*WH,behavior:beh}); mc.scrollTo({top:Math.min(11,Math.round(m/5))*WH,behavior:beh});
