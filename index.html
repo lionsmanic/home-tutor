@@ -401,6 +401,8 @@ const WEEK_CH=["","週一","週二","週三","週四","週五","週六","週日"
 const DAY_ISO={"週一":1,"週二":2,"週三":3,"週四":4,"週五":5,"週六":6,"週日":7};
 const now=new Date();
 const isMobile=/iphone|ipad|ipod|android/i.test(navigator.userAgent);
+const inApp=/\bLine\/|FBAN|FBAV|Instagram|MicroMessenger/i.test(navigator.userAgent);   // LINE／FB／IG／微信 內建瀏覽器
+function openOutside(){ const u=new URL(location.href); u.searchParams.set("openExternalBrowser","1"); location.href=u.toString(); }
 const isMac=/macintosh|mac os x/i.test(navigator.userAgent);
 const pasteKey=isMac?"⌘V":"Ctrl+V";
 const pad=n=>String(n).padStart(2,"0");
@@ -970,8 +972,13 @@ function exportData(){ copyText(JSON.stringify({courses,marks,settings},null,2))
 let pendingShared=null;
 function b64uEncode(s){ return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
 function b64uDecode(b){ b=b.replace(/-/g,"+").replace(/_/g,"/"); while(b.length%4)b+="="; return decodeURIComponent(escape(atob(b))); }
-function buildShareUrl(){ const g=gcal&&gcal.clientId?{clientId:gcal.clientId,calendarId:gcal.calendarId}:undefined; return location.origin+location.pathname+"#d="+b64uEncode(JSON.stringify({courses,marks,settings,gcal:g})); }
+function buildShareUrl(){ const g=gcal&&gcal.clientId?{clientId:gcal.clientId,calendarId:gcal.calendarId}:undefined; return location.origin+location.pathname+"?openExternalBrowser=1#d="+b64uEncode(JSON.stringify({courses,marks,settings,updatedAt,gcal:g})); }
 function shareData(){
+  if(gcal&&gcal.clientId&&!shareData._ok){ openModal(`<h2>📤 分享到其他裝置</h2><p class="field hint">分享連結只是<b>這一刻的快照</b>。已經開了 Google 同步，所以在手機上：</p>
+    <ol class="sync-steps"><li>點開連結（從 LINE 點會自動改用 Safari／Chrome 開啟）</li><li>按「載入這份」</li><li>按上方藍色的「登入 Google」，登入<b>同一個 Google 帳號</b></li></ol>
+    <p class="field hint">之後兩邊都會自動保持同一份；也可以不用分享連結，直接在手機 Safari 打開 <b>${location.origin+location.pathname}</b> 登入 Google 即可（第一次需要在那台裝置貼一次用戶端 ID）。</p>
+    <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" id="shareGo">產生連結</button></div>`);
+    modal.querySelector("#shareGo").onclick=()=>{ closeModal(); shareData._ok=true; shareData(); shareData._ok=false; }; return; }
   const url=buildShareUrl(), big=url.length>14000;
   if(navigator.share){ navigator.share({title:"Alyssa & Evelyn 的每日課表", text:"課表（點開直接看編好的內容）", url}).catch(()=>{ copyText(url).then(()=>toast("✅ 已複製分享連結，貼到 LINE／訊息傳給其他裝置")); }); }
   else { copyText(url).then(()=>toast(big?"✅ 已複製連結（內容偏多，建議用 AirDrop／雲端傳）":"✅ 已複製分享連結，貼到 LINE／訊息傳給其他裝置")); }
@@ -1010,7 +1017,9 @@ document.addEventListener("click",e=>{
   else if(d.addonce!==undefined) openCourseModal(null,{recur:"once",date:d.addonce});
   else if(d.export!==undefined) exportData();
   else if(d.share!==undefined) shareData();
-  else if(d.sharedload!==undefined){ if(pendingShared){ adoptSharedGcal(pendingShared.gcal); courses=pendingShared.courses; marks=pendingShared.marks||{}; settings=normSettings(pendingShared.settings); ensureCids(); saveData(); } pendingShared=null; clearHash(); closeModal(); renderAll(); toast("✅ 已載入分享的課表"); }
+  else if(d.sharedload!==undefined){ if(pendingShared){ const ps=pendingShared; courses=ps.courses; marks=ps.marks||{}; settings=normSettings(ps.settings); ensureCids();
+      updatedAt=ps.updatedAt||1; try{ localStorage.setItem(STORE_KEY, JSON.stringify({courses,marks,settings,updatedAt})); }catch(e){}
+      if(ps.gcal&&ps.gcal.clientId){ adoptSharedGcal(ps.gcal); gcal.linked=true; saveG(); } } pendingShared=null; clearHash(); closeModal(); renderAll(); paintG(); toast(gcal&&gcal.clientId?"✅ 已載入，請按上方「登入 Google」取得最新版":"✅ 已載入分享的課表"); }
   else if(d.sharedcancel!==undefined){ pendingShared=null; clearHash(); closeModal(); toast("已保留這台原本的課表"); }
   else if(d.import!==undefined) openImport();
   else if(d.reset!==undefined) resetData();
@@ -1200,7 +1209,8 @@ function paintG(){
   const st=modal&&modal.querySelector("#gStat"); if(st) st.outerHTML=gStatHTML();
   const bar=document.getElementById("cloudBar"); if(!bar) return;
   const on=!!(gcal&&gcal.clientId); let h="";
-  if(on&&!tokOk()&&!gState.busy) h=`<span>☁️ 登入 Google，載入電腦／手機上最新的課表</span><button data-glogin>登入 Google</button>`;
+  if(inApp) h=`<span>⚠️ 你正在 ${/\bLine\//i.test(navigator.userAgent)?"LINE":"App"} 內建瀏覽器，這裡的課表和 Safari／Chrome 是分開的，也不能登入 Google。請改用 ${/iphone|ipad/i.test(navigator.userAgent)?"Safari":"Chrome"} 開啟。</span><button data-outside>用瀏覽器開啟</button>`;
+  else if(on&&!tokOk()&&!gState.busy) h=`<span>☁️ 登入 Google，載入電腦／手機上最新的課表（要和電腦登入同一個帳號）</span><button data-glogin>登入 Google</button>`;
   else if(on&&gState.busy) h=`<span>☁️ 同步中…</span>`;
   else if(on&&gState.err) h=`<span>⚠️ ${gState.err}</span><button data-glogin>重試</button>`;
   else if(!on&&!courses.length) h=`<span>☁️ 在別台裝置排過課？用 Google 同步就能在這裡看到同一份</span><button data-sync>設定</button>`;
@@ -1245,7 +1255,7 @@ function openSync(){
     modal.querySelector("#gOff2").addEventListener("click",()=>{ try{ if(window.google&&gTok) google.accounts.oauth2.revoke(gTok.t); }catch(e){} gcal=null; gTok=null; saveG(); try{ localStorage.removeItem(GCAL_KEY+"-tok"); }catch(e){} gState={busy:false,err:"",pending:false}; paintG(); closeModal(); toast("已停用 Google 同步"); }); });
 }
 function adoptSharedGcal(g){ if(g&&g.clientId&&!(gcal&&gcal.clientId)){ gcal={clientId:g.clientId,calendarId:g.calendarId||"",last:0}; saveG(); initTokenClient().catch(()=>{}); } }
-document.addEventListener("click",e=>{ if(e.target.closest("[data-sync]")) openSync(); else if(e.target.closest("[data-glogin]")){ gState.err=""; tokOk()?gSyncNow():askToken(); } });
+document.addEventListener("click",e=>{ if(e.target.closest("[data-outside]")){ openOutside(); return; } if(e.target.closest("[data-sync]")) openSync(); else if(e.target.closest("[data-glogin]")){ gState.err=""; tokOk()?gSyncNow():askToken(); } });
 // 舊版 Gist 同步設定（已改用 Google 日曆）清掉
 try{ localStorage.removeItem("home-tutor-sync-v1"); }catch(e){}
 
