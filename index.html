@@ -762,17 +762,28 @@ function bindFeeFields(){
     modal.querySelector("#f_packkey").innerHTML=`<option value="">這堂課自己一張${own.length?`（目前與 ${own.map(slotName).join("、")} 共用）`:""}</option>`
       +Object.entries(keys).filter(([k])=>k!==myKey||cur).map(([k,xs])=>`<option value="${k}" ${cur===k?"selected":""}>和「${esc(xs[0].title)}${xs[0].tname?" · "+esc(xs[0].tname):""}」共用（${xs.map(slotName).join("、")}）</option>`).join("");
     // 新增課程：課名＋老師和某張套票相同時，自動選共用（可再改）
-    const sel=modal.querySelector("#f_packkey"), auto=()=>{ if(me||sel.dataset.touched) return;
+    const sel=modal.querySelector("#f_packkey"), auto=()=>{ if(me) return;
       const t=(modal.querySelector("#f_title").value||"").trim(), tn=(modal.querySelector("#f_tname").value||"").trim(); if(!t) return;
-      const hit=Object.entries(keys).find(([k,xs])=>xs.some(x=>x.title===t&&(x.tname||"")===tn)); sel.value=hit?hit[0]:""; };
-    sel.addEventListener("change",()=>{ sel.dataset.touched="1"; });
+      // 同課名＋同老師的既有課有設定收費 → 自動帶入收費方式（使用者沒動過收費欄位時）
+      const src=courses.find(x=>!x.movedFrom&&x.title===t&&(x.tname||"")===tn&&x.fee&&x.fee.mode);
+      if(!src&&!mo.dataset.touched&&mo.dataset.auto){ mo.value=""; delete mo.dataset.auto; mo.dispatchEvent(new Event("change")); }
+      if(src&&!mo.dataset.touched){ mo.dataset.auto="1"; mo.value=src.fee.mode; modal.querySelector("#f_feeamt").value=src.fee.amt||""; modal.querySelector("#f_feemeth").value=src.fee.method||"transfer";
+        modal.querySelector("#f_feepack").value=src.fee.packN||""; mo.dispatchEvent(new Event("change")); }
+      if(sel.dataset.touched) return;
+      const hit=Object.entries(keys).find(([k,xs])=>xs.some(x=>x.title===t&&(x.tname||"")===tn)); sel.value=hit?hit[0]:""; sel.dispatchEvent(new Event("change",{bubbles:false})); delete sel.dataset.touched; };
+    sel.addEventListener("change",e=>{ if(e.isTrusted) sel.dataset.touched="1"; if(typeof upd==="function") upd(); });
+    mo.addEventListener("change",e=>{ if(e.isTrusted) mo.dataset.touched="1"; });
     ["#f_title","#f_tname"].forEach(id=>{ const el=modal.querySelector(id); el.addEventListener("input",auto); el.addEventListener("change",auto); });
     const tpl=modal.querySelector("#f_template"); if(tpl) tpl.addEventListener("change",()=>setTimeout(auto,0));
     auto();
   }
-  const upd=()=>{ const m=mo.value, a=modal.querySelector("#f_feeamt"), pk=modal.querySelector("#feePackBox");
+  var upd=function(){ const m=mo.value, a=modal.querySelector("#f_feeamt"), pk=modal.querySelector("#feePackBox");
     modal.querySelector("#feeAmtRow").style.display=m?"":"none"; modal.querySelector("#f_feemeth").parentElement.style.display=m?"":"none";
     pk.style.display=m==="pack"?"":"none"; modal.querySelector("#feeShareBox").style.display=m==="pack"?"":"none";
+    const shareK=m==="pack"?(modal.querySelector("#f_packkey").value||""):"";
+    if(shareK){ modal.querySelector("#feeAmtRow").style.display="none";
+      const lead=courses.find(x=>packKey(x)===shareK&&x.fee&&x.fee.mode==="pack"), pi=lead?packInfo(lead):null;
+      modal.querySelector("#feeHint").innerHTML=`✅ 費用沿用共用套票${pi?`：每堂 <b>${money(pi.unit)}</b>，目前剩 <b>${pi.left}</b> 堂`:lead&&lead.fee.amt?`：${lead.fee.packN||10} 堂 ${money(lead.fee.amt)}`:""}，不用另外輸入金額；上這堂會自動從同一張套票扣。`; return; }
     a.placeholder={per:"每堂多少錢（例 900）",hour:"每小時多少錢（例 600）",pack:"套票總金額",month:"每月多少錢"}[m]||"金額";
     modal.querySelector("#feeHint").textContent={per:"每上一堂付一次，填一堂的金額；請假、停課不算。",hour:"依每堂上課時數計算；請假、停課不算。",
       pack:"例：10 堂 $8,000。繳費時在「費用」記一筆，之後每上一堂自動扣一堂；請假、停課不扣。",month:"每個月固定金額（那個月有課才算）。"}[m]||""; };
@@ -1325,6 +1336,7 @@ function saveCourse(){
   { const fm=g("#f_feemode").value, fa=+g("#f_feeamt").value||0, fp=+g("#f_feepack").value||0;
     const pkSel=(g("#f_packkey")||{}).value||"";
     if(fm) obj.fee={mode:fm,amt:fa,method:g("#f_feemeth").value,...(fm==="pack"?{packN:fp||10,...(pkSel?{packKey:pkSel}:{})}:{})};
+    if(fm==="pack"&&pkSel){ const lead=courses.find(x=>packKey(x)===pkSel&&x.fee&&x.fee.mode==="pack"); if(lead) Object.assign(obj.fee,{amt:lead.fee.amt,packN:lead.fee.packN,method:lead.fee.method}); }
     if(editIndex!==null&&courses[editIndex].movedFrom) obj.movedFrom=courses[editIndex].movedFrom; }
   if(editIndex===null) courses.push(obj); else courses[editIndex]=obj;
   saveData(); closeModal(); renderAll(); toast(editIndex===null?"已新增課程":"已更新課程");
