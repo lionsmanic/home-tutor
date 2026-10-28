@@ -272,6 +272,10 @@
   .pg-what{flex:1;min-width:0;line-height:1.45;}
   .pg-line b{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
   .pg-line .pay-x{padding:0 2px;}
+  .fee-brk{padding:6px 14px 10px;border-bottom:1px solid var(--hair);}
+  .fee-brk>div{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px dashed var(--hair);font-size:13px;}
+  .fee-brk>div:last-child{border-bottom:none;} .fee-brk span{color:var(--muted);font-variant-numeric:tabular-nums;} .fee-brk em{font-style:normal;color:var(--clash);font-weight:800;}
+  .fee-brk .fee-note{display:block;color:var(--muted);font-size:12px;line-height:1.5;}
   .fee-sub{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;font-size:13px;font-weight:800;border-bottom:1px solid var(--hair);background:#fff;}
   .fee-sub span{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;}
   .fee-empty{padding:12px 14px;color:var(--muted);font-size:13px;}
@@ -815,7 +819,8 @@ function monthStats(y,m){
     const all=lessonDates(c,first,last), held=all.filter(x=>x<=today).length;
     // 套票：只有起扣日之後的課才算進套票；之前的課列為「不在套票內」
     const pk0=f.mode==="pack"?packInfo(c):null, inPack=pk0?all.filter(x=>x>=pk0.since):all, outPack=pk0?all.filter(x=>x<pk0.since):[];
-    const due=f.mode==="month"?(all.length?(+f.amt||0):0):all.length*unitCost(c);
+    const ded=pk0?inPack.filter(x=>x<=today):[], later=all.filter(x=>x>today), before=pk0?outPack:[];
+    const due=f.mode==="month"?(all.length?(+f.amt||0):0):f.mode==="pack"?(pk0?ded.length*unitCost(c):0):all.length*unitCost(c);
     const mp=pays().filter(p=>p.cid===c.cid&&p.date>=first&&p.date<=last), paid=mp.reduce((t,p)=>t+(+p.amount||0),0);
     const pack=f.mode==="pack"?packInfo(c):null;
     // 未付：套票看剩餘堂數（用完了才欠），其他看本月上課費用−本月已付
@@ -824,13 +829,20 @@ function monthStats(y,m){
     const lead=f.mode==="pack"&&!seenPack.has(packKey(c)); if(f.mode==="pack") seenPack.add(packKey(c));
     const owe=f.mode==="pack"?(pack?(lead?Math.max(0,-pack.left)*pack.unit:0):due):f.mode==="month"?Math.max(0,due-paid):Math.max(0,unpaid.length*unitCost(c)-legacy);
     const leaves=[]; { let d=parseYmd(first), e=parseYmd(last); while(d<=e){ const ds=ymd(d); if(!c.paused&&occursOnDate(c,d)){ const mk=getMark(c,ds); if(mk&&mk.leave) leaves.push({ds,m:mk}); } d=addDays(d,1); } }
-    return {c,i,n:all.length,held,due,paid,pack,owe,dates:all,leaves,outPack,pl,lead};
+    return {c,i,n:all.length,held,due,paid,pack,owe,dates:all,leaves,outPack,pl,lead,ded,later,before};
   }).filter(Boolean);
   const mpays=pays().filter(p=>p.date>=first&&p.date<=last).sort((a,b)=>a.date<b.date?-1:1);
   const byMeth={}; mpays.forEach(p=>byMeth[p.method]=(byMeth[p.method]||0)+(+p.amount||0));
   const byKid={}; rows.forEach(r=>{ const k=r.c.child; byKid[k]=byKid[k]||{due:0,paid:0}; byKid[k].due+=r.due; byKid[k].paid+=r.paid; });
   const due=rows.reduce((t,r)=>t+r.due,0), paid=mpays.reduce((t,p)=>t+(+p.amount||0),0), owe=rows.reduce((t,r)=>t+r.owe,0);
-  return {rows,mpays,byMeth,byKid,due,paid,owe,first,last};
+  // 分開兩種付費：單堂（上一堂付一堂）與套票（預先付款、上課扣堂）
+  const sR=rows.filter(r=>r.c.fee.mode!=="pack"), pR=rows.filter(r=>r.c.fee.mode==="pack");
+  const single={due:sR.reduce((t,r)=>t+r.due,0),paid:sR.reduce((t,r)=>t+r.paid,0),owe:sR.reduce((t,r)=>t+r.owe,0)};
+  const packs=[]; { const seen=new Set(); pR.forEach(r=>{ const k=packKey(r.c); if(seen.has(k)) return; seen.add(k);
+      const g=pR.filter(x=>packKey(x.c)===k); packs.push({title:r.c.title,tname:r.c.tname||"",slots:g.filter(x=>!x.c.movedFrom).map(x=>slotName(x.c)),n:g.reduce((t,x)=>t+x.ded.length,0),later:g.reduce((t,x)=>t+x.later.length,0),value:g.reduce((t,x)=>t+x.due,0),
+        bought:g.reduce((t,x)=>t+x.paid,0),left:r.pack?r.pack.left:null,owe:g.reduce((t,x)=>t+x.owe,0)}); }); }
+  const pack={value:pR.reduce((t,r)=>t+r.due,0),bought:pR.reduce((t,r)=>t+r.paid,0),owe:pR.reduce((t,r)=>t+r.owe,0),n:pR.reduce((t,r)=>t+r.n,0)};
+  return {rows,mpays,byMeth,byKid,due,paid,owe,first,last,single,pack,packs};
 }
 function feeLabel(c){ const f=c.fee||{};
   const hrs=durH(c), hrTxt=Number.isInteger(hrs)?hrs:hrs.toFixed(2).replace(/0+$/,"");
@@ -850,12 +862,13 @@ function renderFees(){
     return Object.entries(g).map(([title,rs])=>{
       rs.sort((a,b)=>kOrd(a.c.child)-kOrd(b.c.child)||wOrd(a.c)-wOrd(b.c)||sortKey(a.c)-sortKey(b.c));
       const due=rs.reduce((t,r)=>t+r.due,0), paid=rs.reduce((t,r)=>t+r.paid,0), owe=rs.reduce((t,r)=>t+r.owe,0);
-      return `<div class="subj-h"><b>${esc(title)}</b><span>上課 ${money(due)} · 已付 ${money(paid)}${owe>0.5?` · <em>未付 ${money(owe)}</em>`:" · ✓ 已付清"}</span></div>`+rs.map(courseRow).join(""); }).join("");
+      const isPack=rs.every(r=>r.c.fee.mode==="pack");
+      return `<div class="subj-h"><b>${esc(title)}</b><span>${isPack?`本月上課 ${money(due)}${paid?` · 本月買套票 ${money(paid)}`:""}${owe>0.5?` · <em>未付 ${money(owe)}</em>`:""}`:`上課 ${money(due)} · 已付 ${money(paid)}${owe>0.5?` · <em>未付 ${money(owe)}</em>`:" · ✓ 已付清"}`}</span></div>`+rs.map(courseRow).join(""); }).join("");
   };
   const md2=x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;};
   const packLine=r=>{ const pk=r.pack, c=r.c;
-    const mine=`本月 ${r.n} 堂${r.n?"："+r.dates.map(md2).join("、"):""}`;
-    if(!pk.shared) return `套票 ${md2(pk.since)} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂${pk.used?`（${pk.usedDates.map(md2).join("、")}）`:""}`;
+    const mine=`本月已扣 ${r.ded.length} 堂${r.ded.length?"："+r.ded.map(md2).join("、"):""}${r.later.length?`<br><span class="dt-next">本月還有：${r.later.map(md2).join("、")}</span>`:""}${r.before.length?`<br><span class="dt-next">起扣前（不在這張套票）：${r.before.map(md2).join("、")}</span>`:""}`;
+    if(!pk.shared) return `套票 ${md2(pk.since)} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂${pk.used?`（${pk.usedDates.map(md2).join("、")}）`:""}${r.later.length?`<br><span class="dt-next">本月還有：${r.later.map(md2).join("、")}</span>`:""}`;
     if(!r.lead) return `${mine}<br><span class="dt-next">與上面共用同一張套票</span>`;
     return `共用套票：${pk.grp.filter(x=>!x.movedFrom).map(slotName).join("、")}<br>${md2(pk.since)} 起扣，共買 ${pk.bought} 堂、已扣 ${pk.used} 堂${pk.used?`（${pk.used2.map(u=>`${kidInit(u.c)} ${md2(u.d)}`).join("、")}）`:""}<br>${mine}`; };
   const courseRow=r=>{ const c=r.c, f=c.fee, pk=r.pack;
@@ -864,7 +877,8 @@ function renderFees(){
     return `<div class="fee-row"><div class="info"><b>${kidTag(c)}${rowWd(c)}${pkTxt}</b><small>${f.mode==="pack"&&pk?`${packLine(r)}</small></div>`:`${feeLabel(c).replace(/^(單堂付費|套票付費) /,"")} · ${methName(f.method)}<br>本月 ${r.n} 堂${r.n?`（已上 ${r.held}）`:""}${r.n?`：${r.dates.map(x=>{const dd=parseYmd(x), pd=f.mode!=="month"&&r.pl.has(x);return `<span class="${pd?"dt-paid":x<=ymd(now)?"dt-done":"dt-next"}">${pd?"✓":""}${dd.getMonth()+1}/${dd.getDate()}</span>`;}).join("、")}`:""}
         ${r.leaves.length?`<br><span class="dt-off">不計費：${r.leaves.map(l=>{const dd=parseYmd(l.ds);return `${dd.getMonth()+1}/${dd.getDate()} ${leaveTag(l.m)}`;}).join("、")}</span>`:""}
 </small></div>`}
-      <div class="amt">上課 ${money(r.due)}<br>已付 ${money(r.paid)}${f.mode==="pack"&&pk&&pk.left>=0?"":`<br><span class="${left>0.5?"owe":"ok"}">${left>0.5?"未付 "+money(left):"✓ 已付清"}</span>`}</div>
+      <div class="amt">${f.mode==="pack"?`上課 ${money(r.due)}${r.lead&&pk&&pk.shared?(()=>{const gp=st.rows.filter(x=>x.c.fee.mode==="pack"&&packKey(x.c)===packKey(c)).reduce((t,x)=>t+x.paid,0);return gp?`<br>買套票 ${money(gp)}`:"";})():r.paid?`<br>買套票 ${money(r.paid)}`:""}${pk&&pk.left<0&&r.lead?`<br><span class="owe">未付 ${money(left)}</span>`:""}`
+        :`上課 ${money(r.due)}<br>已付 ${money(r.paid)}<br><span class="${left>0.5?"owe":"ok"}">${left>0.5?"未付 "+money(left):"✓ 已付清"}</span>`}</div>
       <button class="fee-btn" data-pay="${r.i}">付款</button></div>`; };
   // 付款紀錄：同一個孩子＋同一課名合併成一格，裡面依星期分行
   const md=x=>{const dd=parseYmd(x);return `${dd.getMonth()+1}/${dd.getDate()}`;};
@@ -901,7 +915,12 @@ function renderFees(){
   h+=`<div class="fee-h">本月上課費用</div>
     <div class="fee-sum"><div><small>本月上課費用</small><b>${money(st.due)}</b></div><div><small>本月已付</small><b>${money(st.paid)}</b></div><div class="${owe>0.5?"owe":""}"><small>未付</small><b>${money(owe)}</b></div></div>`;
   const meth=PAY_METHODS.filter(([k])=>st.byMeth[k]).map(([k,t])=>`<span>${t} <b>${money(st.byMeth[k])}</b></span>`).join("");
-  const kids=Object.entries(st.byKid).map(([k,v])=>`<span>${k} 上課 <b>${money(v.due)}</b>／付 <b>${money(v.paid)}</b></span>`).join("");
+  const kids=Object.entries(st.byKid).map(([k,v])=>`<span>${k} 本月上課 <b>${money(v.due)}</b></span>`).join("");
+  const S=st.single, P=st.pack;
+  h+=`<div class="fee-brk">
+    ${S.due||S.paid?`<div><b>🧾 單堂付費</b><span>上課 ${money(S.due)} · 已付 ${money(S.paid)} · ${S.owe>0.5?`<em>未付 ${money(S.owe)}</em>`:"✓ 已付清"}</span></div>`:""}
+    ${st.packs.map(k=>`<div><b>🎫 ${esc(k.title)}${k.tname?" · "+esc(k.tname):""} 套票（${k.slots.join("、")}）</b><span>本月已扣 ${k.n} 堂（價值 ${money(k.value)}）${k.later?` · 本月還有 ${k.later} 堂`:""}${k.bought?` · 本月買套票 ${money(k.bought)}`:""}${k.left!==null?` · ${k.left<0?`<em>超用 ${-k.left} 堂，未付 ${money(k.owe)}</em>`:`剩 ${k.left} 堂`}`:" · <em>尚未記錄繳費</em>"}</span></div>`).join("")}
+    <div class="fee-note">本月已付 = 這個月實際付出去的錢（含預買套票）；套票的「上課」是本月已扣堂數的價值，不等於這個月付的錢，所以兩邊不一定相等。</div></div>`;
   if(meth||kids) h+=`<div class="fee-meth" style="border-bottom:none">${meth}${kids}</div>`;
   box.innerHTML=h+`</div>`;
 }
