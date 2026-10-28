@@ -242,6 +242,29 @@
   .wsep{position:relative;z-index:1;font-size:22px;font-weight:900;}
   .seg{display:flex;gap:6px;}
   .rchips{display:flex;flex-wrap:wrap;gap:6px;}
+  .fee-card{background:var(--card);border:1px solid var(--hair);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+  .fee-top{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--hair);flex-wrap:wrap;}
+  .fee-top .navlabel{min-width:auto;}
+  .fee-top .sp{flex:1;}
+  .fee-btn{border:1px solid var(--hair);background:#fff;border-radius:9px;padding:7px 12px;font-weight:700;cursor:pointer;font-family:inherit;color:var(--ink);font-size:13.5px;}
+  .fee-btn.pri{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .fee-sum{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--hair);}
+  .fee-sum div{padding:10px 12px;border-right:1px solid var(--hair);} .fee-sum div:last-child{border-right:none;}
+  .fee-sum small{display:block;font-size:12px;color:var(--muted);font-weight:700;}
+  .fee-sum b{font-size:18px;font-variant-numeric:tabular-nums;}
+  .fee-sum .owe b{color:var(--clash);}
+  .fee-meth{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;border-bottom:1px solid var(--hair);font-size:13px;color:var(--muted);}
+  .fee-meth span{background:#F7F4EE;border-radius:999px;padding:3px 10px;} .fee-meth b{color:var(--ink);font-variant-numeric:tabular-nums;}
+  .fee-row{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--hair);}
+  .fee-row .info{flex:1;min-width:0;} .fee-row .info b{display:block;font-size:14.5px;} .fee-row .info small{color:var(--muted);font-size:12.5px;line-height:1.5;display:block;}
+  .fee-row .amt{text-align:right;font-variant-numeric:tabular-nums;font-size:13px;line-height:1.5;white-space:nowrap;}
+  .fee-row .amt .owe{color:var(--clash);font-weight:800;} .fee-row .amt .ok{color:#1E7A6F;font-weight:800;}
+  .fee-h{padding:8px 14px;font-size:12.5px;font-weight:800;color:var(--muted);background:#FBF8F2;border-bottom:1px solid var(--hair);}
+  .fee-empty{padding:12px 14px;color:var(--muted);font-size:13px;}
+  .pk{display:inline-block;border-radius:6px;padding:0 6px;font-size:11.5px;font-weight:800;background:var(--sister-soft);color:#1E7A6F;margin-left:4px;}
+  .pk.low{background:var(--clash-soft);color:var(--clash);}
+  .pay-x{border:none;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px;}
+  @media(max-width:560px){ .fee-sum b{font-size:15.5px;} }
   .lv-dates{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;}
   .lv-dates .dpk-d{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:6px 0;}
   .lv-dates .dpk-d small{font-size:10.5px;font-weight:700;opacity:.75;}
@@ -320,6 +343,9 @@
 
     <div class="section-head"><h2>🗓️ 課表</h2><span class="count">點空白處可直接加課 · 點課程看詳情／請假</span></div>
     <div id="calendar"></div>
+
+    <div class="section-head"><h2>💰 費用</h2><span class="count">每月上課費用與付款統計</span></div>
+    <div id="fees"></div>
 
     <div class="section-head"><h2>📚 課程清單</h2><span class="count">編輯／刪除／請假</span></div>
     <div id="courseList"></div>
@@ -629,7 +655,7 @@ function renderCourseList(){
       .sort((a,b)=>(a.c.recur==="once"?1:0)-(b.c.recur==="once"?1:0)||(DAY_ISO[a.c.day]||99)-(DAY_ISO[b.c.day]||99)||sortKey(a.c)-sortKey(b.c))
       .map(o=>{ const c=o.c, st=schedLabel(c);
         const leave=c.paused?`<button class="mini mini-leave" disabled>暫緩</button>`:`<button class="mini mini-leave" data-openleave="${o.i}" data-ds="${nextDateFor(c)}">請假</button>`;
-        return `<div class="row ${cls}"><span class="pill-status ${st[1]}">${st[0]}</span><div class="info"><b>${c.title}</b><small>${displayTime(c)} · ${teacherName(c)}</small></div><div class="acts">${leave}<button class="mini mini-edit" data-edit="${o.i}">編輯</button></div></div>`;
+        return `<div class="row ${cls}"><span class="pill-status ${st[1]}">${st[0]}</span><div class="info"><b>${c.title}${c.fee&&c.fee.mode==="pack"?(()=>{const pi=packInfo(c);return pi?`<span class="pk ${pi.left<=2?"low":""}">剩 ${pi.left} 堂</span>`:"";})():""}</b><small>${displayTime(c)} · ${teacherName(c)}${c.fee&&c.fee.mode?" · "+feeLabel(c):""}</small></div><div class="acts">${leave}<button class="mini mini-edit" data-edit="${o.i}">編輯</button></div></div>`;
       }).join("");
     return `<div class="list-sub ${cls}">${kid}</div>${rows}`;
   }).join("")+`</div>`;
@@ -652,7 +678,7 @@ function renderTeachers(){
     return `<div class="tcard"><h3>${g.name}</h3><div class="note">負責：${cs}</div><div class="btns">${c}<button class="btn btn-edit" data-edit="${g.courses[0].i}">編輯課程</button></div></div>`; }).join("");
 }
 
-function renderAll(){ renderToday(); renderCalendar(); renderCourseList(); renderTeachers(); }
+function renderAll(){ renderToday(); renderCalendar(); renderFees(); renderCourseList(); renderTeachers(); }
 
 /* ---------- 請假 ---------- */
 function leaveMsg(c,ds,reason){
@@ -691,6 +717,129 @@ function notifyLeave(i,ds,channel,reason){
 }
 function copyText(text){ if(navigator.clipboard&&window.isSecureContext) return navigator.clipboard.writeText(text).catch(()=>fallbackCopy(text)); return fallbackCopy(text); }
 function fallbackCopy(text){ return new Promise(res=>{const ta=document.createElement("textarea");ta.value=text;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();try{document.execCommand("copy");}catch(e){}document.body.removeChild(ta);res();}); }
+
+/* =====================================================================
+   費用：每門課的收費方式 + 付款紀錄（settings.pays，跟課表一起同步）
+   ===================================================================== */
+const FEE_MODES=[["","不記錄費用"],["per","每堂固定金額"],["hour","每小時金額"],["pack","套票（預繳堂數）"],["month","月費"]];
+const PAY_METHODS=[["card","💳 刷卡"],["transfer","🏦 轉帳"],["cash","💵 現金"],["other","其他"]];
+const methName=k=>(PAY_METHODS.find(x=>x[0]===k)||["","其他"])[1];
+const money=n=>"$"+Math.round(n||0).toLocaleString("en-US");
+const pays=()=>(settings.pays=settings.pays||[]);
+let feeCursor=new Date(now.getFullYear(),now.getMonth(),1);
+function bindFeeFields(){
+  const mo=modal.querySelector("#f_feemode"); if(!mo) return;
+  const upd=()=>{ const m=mo.value, a=modal.querySelector("#f_feeamt"), pk=modal.querySelector("#feePackBox");
+    modal.querySelector("#feeAmtRow").style.display=m?"":"none"; modal.querySelector("#f_feemeth").parentElement.style.display=m?"":"none";
+    pk.style.display=m==="pack"?"":"none";
+    a.placeholder={per:"每堂多少錢",hour:"每小時多少錢",pack:"套票總金額",month:"每月多少錢"}[m]||"金額";
+    modal.querySelector("#feeHint").textContent={per:"每上一堂算一次；請假、停課不算。",hour:"依每堂上課時數計算；請假、停課不算。",
+      pack:"例：10 堂 $8,000。繳費時在「費用」記一筆，之後每上一堂自動扣一堂；請假、停課不扣。",month:"每個月固定金額（那個月有課才算）。"}[m]||""; };
+  mo.addEventListener("change",upd); upd();
+}
+function lessonDates(c,from,to){ // from/to: ymd（含），排除請假／停課、暫緩
+  if(c.paused) return []; const out=[]; let d=parseYmd(from), end=parseYmd(to);
+  for(let k=0;k<800&&d<=end;k++){ const ds=ymd(d); if(occursOnDate(c,d)){ const m=getMark(c,ds); if(!(m&&m.leave)) out.push(ds); } d=addDays(d,1); }
+  return out;
+}
+const durH=c=>c.start&&c.end?Math.max(0,toMin(c.end)-toMin(c.start))/60:1;
+function packInfo(c){ // 套票：買了幾堂、上了幾堂、剩幾堂、每堂折算
+  const ps=pays().filter(p=>p.cid===c.cid&&p.classes>0).sort((a,b)=>a.date<b.date?-1:1);
+  if(!ps.length) return null;
+  const bought=ps.reduce((t,p)=>t+(+p.classes||0),0), paid=ps.reduce((t,p)=>t+(+p.amount||0),0);
+  const used=lessonDates(c,ps[0].date,ymd(now)).length, unit=bought?paid/bought:0;
+  return {bought,used,left:bought-used,unit,since:ps[0].date};
+}
+function unitCost(c){ const f=c.fee||{};
+  if(f.mode==="per") return +f.amt||0;
+  if(f.mode==="hour") return (+f.amt||0)*durH(c);
+  if(f.mode==="pack"){ const pi=packInfo(c); return pi?pi.unit:((+f.amt||0)/(+f.packN||10)); }
+  return 0; }
+function monthStats(y,m){
+  const first=ymd(new Date(y,m,1)), last=ymd(new Date(y,m+1,0)), today=ymd(now);
+  const rows=courses.map((c,i)=>{ const f=c.fee||{}; if(!f.mode) return null;
+    const all=lessonDates(c,first,last), held=all.filter(x=>x<=today).length;
+    const due=f.mode==="month"?(all.length?(+f.amt||0):0):all.length*unitCost(c);
+    const mp=pays().filter(p=>p.cid===c.cid&&p.date>=first&&p.date<=last), paid=mp.reduce((t,p)=>t+(+p.amount||0),0);
+    const pack=f.mode==="pack"?packInfo(c):null;
+    // 未付：套票看剩餘堂數（用完了才欠），其他看本月上課費用−本月已付
+    const owe=f.mode==="pack"?(pack?Math.max(0,-pack.left)*pack.unit:due):Math.max(0,due-paid);
+    return {c,i,n:all.length,held,due,paid,pack,owe};
+  }).filter(Boolean);
+  const mpays=pays().filter(p=>p.date>=first&&p.date<=last).sort((a,b)=>a.date<b.date?-1:1);
+  const byMeth={}; mpays.forEach(p=>byMeth[p.method]=(byMeth[p.method]||0)+(+p.amount||0));
+  const byKid={}; rows.forEach(r=>{ const k=r.c.child; byKid[k]=byKid[k]||{due:0,paid:0}; byKid[k].due+=r.due; byKid[k].paid+=r.paid; });
+  const due=rows.reduce((t,r)=>t+r.due,0), paid=mpays.reduce((t,p)=>t+(+p.amount||0),0), owe=rows.reduce((t,r)=>t+r.owe,0);
+  return {rows,mpays,byMeth,byKid,due,paid,owe,first,last};
+}
+function feeLabel(c){ const f=c.fee||{};
+  return {per:`每堂 ${money(f.amt)}`,hour:`每小時 ${money(f.amt)}`,pack:`套票 ${f.packN||10} 堂 ${money(f.amt)}`,month:`月費 ${money(f.amt)}`}[f.mode]||""; }
+function renderFees(){
+  const box=document.getElementById("fees"); if(!box) return;
+  const y=feeCursor.getFullYear(), m=feeCursor.getMonth(), st=monthStats(y,m);
+  const noFee=courses.filter(c=>!(c.fee&&c.fee.mode)&&!c.paused).length;
+  const owe=st.owe;
+  let h=`<div class="fee-card"><div class="fee-top"><button class="navbtn" data-feenav="-1">‹</button><span class="navlabel">${y}年${m+1}月</span><button class="navbtn" data-feenav="1">›</button>
+    <span class="sp"></span><button class="fee-btn pri" data-pay="">＋ 記一筆付款</button><button class="fee-btn" data-feecsv>⬇ CSV</button></div>
+    <div class="fee-sum"><div><small>本月上課費用</small><b>${money(st.due)}</b></div><div><small>本月已付</small><b>${money(st.paid)}</b></div><div class="${owe>0.5?"owe":""}"><small>未付</small><b>${money(owe)}</b></div></div>`;
+  const meth=PAY_METHODS.filter(([k])=>st.byMeth[k]).map(([k,t])=>`<span>${t} <b>${money(st.byMeth[k])}</b></span>`).join("");
+  const kids=Object.entries(st.byKid).map(([k,v])=>`<span>${k} 上課 <b>${money(v.due)}</b>／付 <b>${money(v.paid)}</b></span>`).join("");
+  if(meth||kids) h+=`<div class="fee-meth">${meth}${kids}</div>`;
+  h+=`<div class="fee-h">各課程</div>`;
+  h+=st.rows.length?st.rows.map(r=>{ const c=r.c, f=c.fee, pk=r.pack;
+    const pkTxt=f.mode==="pack"?(pk?`<span class="pk ${pk.left<=2?"low":""}">剩 ${pk.left} 堂${pk.left>0?` · ${money(pk.left*pk.unit)}`:""}</span>`:`<span class="pk low">尚未記錄繳費</span>`):"";
+    const left=r.owe;
+    return `<div class="fee-row"><div class="info"><b>${kidTag(c)}${c.title}${pkTxt}</b><small>${feeLabel(c)} · ${methName(f.method)} · 本月 ${r.n} 堂${r.n?`（已上 ${r.held}）`:""}</small></div>
+      <div class="amt">上課 ${money(r.due)}<br>已付 ${money(r.paid)}${f.mode==="pack"&&pk&&pk.left>=0?"":`<br><span class="${left>0.5?"owe":"ok"}">${left>0.5?"未付 "+money(left):"✓ 已付清"}</span>`}</div>
+      <button class="fee-btn" data-pay="${r.i}">付款</button></div>`; }).join("")
+    :`<div class="fee-empty">還沒有課程設定收費方式。到「課程清單 › 編輯」最下面的「💰 收費方式」設定。</div>`;
+  if(noFee&&st.rows.length) h+=`<div class="fee-empty">另有 ${noFee} 門課還沒設定收費方式（編輯課程即可設定）。</div>`;
+  h+=`<div class="fee-h">本月付款紀錄</div>`+(st.mpays.length?st.mpays.map(p=>{ const c=courses.find(x=>x.cid===p.cid); const d=parseYmd(p.date);
+    return `<div class="fee-row"><div class="info"><b>${d.getMonth()+1}/${d.getDate()} ${c?kidTag(c)+c.title:"（已刪除的課）"}</b><small>${methName(p.method)}${p.classes?` · 套票 ${p.classes} 堂`:""}${p.note?" · "+p.note:""}</small></div>
+      <div class="amt"><b>${money(p.amount)}</b></div><button class="pay-x" data-paydel="${p.id}" title="刪除這筆">✕</button></div>`; }).join(""):`<div class="fee-empty">這個月還沒有付款紀錄。</div>`);
+  box.innerHTML=h+`</div>`;
+}
+function openPay(i){
+  const fc=courses.map((c,k)=>({c,k})).filter(o=>o.c.fee&&o.c.fee.mode);
+  const list=fc.length?fc:courses.map((c,k)=>({c,k}));
+  if(!list.length){ toast("請先新增課程"); return; }
+  const sel=(i!==""&&i!=null)?+i:list[0].k;
+  const draw=k=>{ const c=courses[k], f=c.fee||{}, y=feeCursor.getFullYear(), mo=feeCursor.getMonth();
+    let amt=""; if(f.mode==="pack") amt=f.amt||""; else if(f.mode){ const r=monthStats(y,mo).rows.find(x=>x.i===k); if(r) amt=Math.max(0,Math.round(r.due-r.paid))||""; }
+    const inMonth=now.getFullYear()===y&&now.getMonth()===mo, defDate=inMonth?ymd(now):ymd(new Date(y,mo+1,0)<now?new Date(y,mo+1,0):new Date(y,mo,1));
+    openModal(`<h2>💰 記一筆付款</h2>
+      <div class="field"><label>課程</label><select id="p_course">${list.map(o=>`<option value="${o.k}" ${o.k===k?"selected":""}>${o.c.child}・${esc(o.c.title)}</option>`).join("")}</select>${f.mode?`<div class="hint">${feeLabel(c)}</div>`:`<div class="hint">這門課還沒設定收費方式，仍可記錄付款。</div>`}</div>
+      <div class="row2"><div class="field"><label>日期</label><input id="p_date" type="date" value="${defDate}"></div><div class="field"><label>金額</label><input id="p_amt" type="number" inputmode="numeric" min="0" value="${amt}" placeholder="例如 800"></div></div>
+      <div class="field"><label>付款方式</label><div class="rchips" id="p_meth">${PAY_METHODS.map(([mk,t])=>`<button type="button" data-pm="${mk}" class="${(f.method||"transfer")===mk?"on":""}">${t}</button>`).join("")}</div></div>
+      <div class="field" style="${f.mode==="pack"?"":"display:none"}"><label>這次買了幾堂（套票）</label><input id="p_cls" type="number" inputmode="numeric" min="0" value="${f.mode==="pack"?(f.packN||10):""}"></div>
+      <div class="field"><label>備註（選填）</label><input id="p_note" placeholder="例如：10 月份、現金交給老師"></div>
+      <div class="modal-acts"><button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" id="p_save">儲存</button></div>`);
+    modal.querySelector("#p_course").onchange=e=>draw(+e.target.value);
+    modal.querySelector("#p_meth").onclick=e=>{ const b=e.target.closest("[data-pm]"); if(!b) return; modal.querySelectorAll("#p_meth button").forEach(x=>x.classList.toggle("on",x===b)); };
+    modal.querySelector("#p_save").onclick=()=>{ const amount=+modal.querySelector("#p_amt").value; if(!(amount>0)){ toast("請輸入金額"); return; }
+      const mb=modal.querySelector("#p_meth .on"), cls=+modal.querySelector("#p_cls").value||0, date=modal.querySelector("#p_date").value||ymd(now);
+      pays().push({id:"p_"+Math.random().toString(36).slice(2,9),cid:c.cid,date,amount,method:mb?mb.dataset.pm:"other",...(f.mode==="pack"&&cls?{classes:cls}:{}),note:(modal.querySelector("#p_note").value||"").trim()});
+      const pd=parseYmd(date); feeCursor=new Date(pd.getFullYear(),pd.getMonth(),1);
+      saveData(); closeModal(); renderAll(); toast(`✅ 已記錄 ${money(amount)}`); };
+  };
+  draw(sel);
+}
+function feeCSV(){
+  const y=feeCursor.getFullYear(), m=feeCursor.getMonth(), st=monthStats(y,m), q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const L=[["月份","孩子","課程","收費方式","付款方式","本月堂數","已上堂數","上課費用","本月已付","未付","套票剩餘堂數"].map(q).join(",")];
+  st.rows.forEach(r=>L.push([`${y}-${pad(m+1)}`,r.c.child,r.c.title,feeLabel(r.c),methName(r.c.fee.method).replace(/^\S+ /,""),r.n,r.held,Math.round(r.due),Math.round(r.paid),Math.round(r.owe),r.pack?r.pack.left:""].map(q).join(",")));
+  L.push(""); L.push(["付款日期","孩子","課程","金額","付款方式","套票堂數","備註"].map(q).join(","));
+  st.mpays.forEach(p=>{ const c=courses.find(x=>x.cid===p.cid)||{}; L.push([p.date,c.child||"",c.title||"",p.amount,methName(p.method).replace(/^\S+ /,""),p.classes||"",p.note||""].map(q).join(",")); });
+  const blob=new Blob(["\ufeff"+L.join("\r\n")],{type:"text/csv;charset=utf-8"}), a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=`課程費用_${y}-${pad(m+1)}.csv`; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-feenav],[data-pay],[data-paydel],[data-feecsv]"); if(!b) return; const d=b.dataset;
+  if(d.feenav){ feeCursor=new Date(feeCursor.getFullYear(),feeCursor.getMonth()+(+d.feenav),1); renderFees(); }
+  else if(d.pay!==undefined) openPay(d.pay);
+  else if(d.paydel){ const p=pays().find(x=>x.id===d.paydel); if(p&&confirm(`刪除這筆 ${money(p.amount)} 的付款紀錄？`)){ settings.pays=pays().filter(x=>x.id!==d.paydel); saveData(); renderAll(); } }
+  else if(d.feecsv!==undefined) feeCSV();
+});
 
 /* ---------- 請假／停課視窗：選日期（可多選）＋誰取消＋原因 ---------- */
 function upcomingDates(c,n,incl){ const out=[]; let d=new Date(now); d.setHours(0,0,0,0);
@@ -927,12 +1076,19 @@ function openCourseModal(i,prefill){
       <div class="row2"><div class="field" style="margin-bottom:0"><input id="f_email" value="${esc(c.email)}" placeholder="Email"></div><div class="field" style="margin-bottom:0"><input id="f_fb" value="${esc(c.fb)}" placeholder="FB/Messenger"></div></div>
       <div class="hint">同一位老師打過名字後，下次在「老師名稱」選他就會自動帶出聯絡方式。</div>
     </div>
+    <div class="field"><label>💰 收費方式（選填，用在費用統計）</label>
+      <div class="row2"><div class="field" style="margin-bottom:6px"><select id="f_feemode">${FEE_MODES.map(([k,t])=>`<option value="${k}" ${((c.fee||{}).mode||"")===k?"selected":""}>${t}</option>`).join("")}</select></div>
+        <div class="field" style="margin-bottom:6px"><select id="f_feemeth">${PAY_METHODS.map(([k,t])=>`<option value="${k}" ${((c.fee||{}).method||"transfer")===k?"selected":""}>${t}</option>`).join("")}</select></div></div>
+      <div class="row2" id="feeAmtRow"><div class="field" style="margin-bottom:0"><input id="f_feeamt" type="number" inputmode="numeric" min="0" value="${(c.fee||{}).amt||""}" placeholder="金額"></div>
+        <div class="field" style="margin-bottom:0" id="feePackBox"><input id="f_feepack" type="number" inputmode="numeric" min="1" value="${(c.fee||{}).packN||""}" placeholder="一次繳幾堂"></div></div>
+      <div class="hint" id="feeHint"></div></div>
     <label class="checkrow"><input type="checkbox" id="f_paused" ${c.paused?"checked":""}> 暫緩（先隱藏，不顯示在課表）</label>
     <div class="modal-acts">${editIndex===null?"":`<button class="btn btn-del" data-deldirect="${editIndex}">刪除</button>`}<button class="btn btn-cancel" data-close>取消</button><button class="btn btn-save" data-savecourse>儲存</button></div>`);
   modal.querySelectorAll("[data-recur]").forEach(b=>b.addEventListener("click",()=>{ recurMode=b.dataset.recur; modal.querySelector("#seg_weekly").classList.toggle("on",recurMode==="weekly"); modal.querySelector("#seg_once").classList.toggle("on",recurMode==="once"); modal.querySelector("#dayBox").style.display=recurMode==="weekly"?"":"none"; modal.querySelector("#dateBox").style.display=recurMode==="once"?"":"none"; }));
   modal.querySelectorAll("[data-mode]").forEach(b=>b.addEventListener("click",()=>{ timeMode=b.dataset.mode; applyTimeSeg(); }));
   renderDatePicker();
   initWheel();
+  bindFeeFields();
   remindSel=Array.isArray(c.remind)?c.remind.slice():null;
   bindRemind(modal.querySelector("#f_remind"),()=>remindSel,v=>remindSel=v,true);
   modal.querySelector("#dateBox").addEventListener("click",e=>{
@@ -961,6 +1117,8 @@ function saveCourse(){
   if(recurMode==="once"){ const ds=[...pickDates].sort(); if(!ds.length){ toast("請至少點選一個日期"); return; } obj.recur="once"; obj.dates=ds; obj.date=ds[0]; } else { obj.recur="weekly"; obj.day=g("#f_day").value; }
   if(timeMode==="fixed"){ const sr=g("#f_start").value.trim(), er=g("#f_end").value.trim(); const s=normalizeTime(sr), e=normalizeTime(er); if((sr&&!s)||(er&&!e)){ toast("時間格式請用 HH:MM，例如 09:30"); return; } if(s&&e&&toMin(e)<=toMin(s)){toast("結束時間要晚於開始時間");return;} if(s){obj.start=s;obj.end=e||s;} } else { obj.timeNote=(g("#f_note").value||"").trim()||"時間未定"; }
   if(Array.isArray(remindSel)) obj.remind=remindSel.slice();
+  { const fm=g("#f_feemode").value, fa=+g("#f_feeamt").value||0, fp=+g("#f_feepack").value||0;
+    if(fm) obj.fee={mode:fm,amt:fa,method:g("#f_feemeth").value,...(fm==="pack"?{packN:fp||10}:{})}; }
   if(editIndex===null) courses.push(obj); else courses[editIndex]=obj;
   saveData(); closeModal(); renderAll(); toast(editIndex===null?"已新增課程":"已更新課程");
 }
