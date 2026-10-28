@@ -724,7 +724,7 @@ function fallbackCopy(text){ return new Promise(res=>{const ta=document.createEl
 /* =====================================================================
    費用：每門課的收費方式 + 付款紀錄（settings.pays，跟課表一起同步）
    ===================================================================== */
-const FEE_MODES=[["","不記錄費用"],["hour","每小時金額（自動算每堂）"],["per","每堂固定金額"],["pack","套票（預繳堂數）"],["month","月費"]];
+const FEE_MODES=[["","不記錄費用"],["per","單堂付費（每堂固定金額）"],["hour","單堂付費（依每小時金額自動算）"],["pack","套票付費（預繳堂數）"],["month","月費"]];
 const PAY_METHODS=[["card","💳 刷卡"],["transfer","🏦 轉帳"],["cash","💵 現金"],["other","其他"]];
 const methName=k=>(PAY_METHODS.find(x=>x[0]===k)||["","其他"])[1];
 const money=n=>"$"+Math.round(n||0).toLocaleString("en-US");
@@ -737,8 +737,8 @@ function bindFeeFields(){
   const upd=()=>{ const m=mo.value, a=modal.querySelector("#f_feeamt"), pk=modal.querySelector("#feePackBox");
     modal.querySelector("#feeAmtRow").style.display=m?"":"none"; modal.querySelector("#f_feemeth").parentElement.style.display=m?"":"none";
     pk.style.display=m==="pack"?"":"none";
-    a.placeholder={per:"每堂多少錢",hour:"每小時多少錢",pack:"套票總金額",month:"每月多少錢"}[m]||"金額";
-    modal.querySelector("#feeHint").textContent={per:"每上一堂算一次；請假、停課不算。",hour:"依每堂上課時數計算；請假、停課不算。",
+    a.placeholder={per:"每堂多少錢（例 900）",hour:"每小時多少錢（例 600）",pack:"套票總金額",month:"每月多少錢"}[m]||"金額";
+    modal.querySelector("#feeHint").textContent={per:"每上一堂付一次，填一堂的金額；請假、停課不算。",hour:"依每堂上課時數計算；請假、停課不算。",
       pack:"例：10 堂 $8,000。繳費時在「費用」記一筆，之後每上一堂自動扣一堂；請假、停課不扣。",month:"每個月固定金額（那個月有課才算）。"}[m]||""; };
   const calc=()=>{ if(mo.value!=="hour"){ upd(); return; } upd();
     const s0=normalizeTime(modal.querySelector("#f_start").value), e0=normalizeTime(modal.querySelector("#f_end").value), a=+modal.querySelector("#f_feeamt").value||0;
@@ -790,7 +790,7 @@ function monthStats(y,m){
 }
 function feeLabel(c){ const f=c.fee||{};
   const hrs=durH(c), hrTxt=Number.isInteger(hrs)?hrs:hrs.toFixed(2).replace(/0+$/,"");
-  return {per:`每堂 ${money(f.amt)}`,hour:c.start&&c.end?`每小時 ${money(f.amt)} × ${hrTxt} 小時 = 每堂 ${money(f.amt*hrs)}`:`每小時 ${money(f.amt)}`,pack:`套票 ${f.packN||10} 堂 ${money(f.amt)}`,month:`月費 ${money(f.amt)}`}[f.mode]||""; }
+  return {per:`單堂付費 每堂 ${money(f.amt)}`,hour:c.start&&c.end?`單堂付費 每小時 ${money(f.amt)} × ${hrTxt} 小時 = 每堂 ${money(f.amt*hrs)}`:`單堂付費 每小時 ${money(f.amt)}`,pack:`套票付費 ${f.packN||10} 堂 ${money(f.amt)}`,month:`月費 ${money(f.amt)}`}[f.mode]||""; }
 function renderFees(){
   const box=document.getElementById("fees"); if(!box) return;
   const y=feeCursor.getFullYear(), m=feeCursor.getMonth(), st=monthStats(y,m);
